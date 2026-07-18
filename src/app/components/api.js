@@ -27,8 +27,8 @@ export const api = {
   login: (username, password) => request("/auth/login", { method: "POST", body: { username, password } }),
   forgotPassword: (email) => request("/auth/forgot-password", { method: "POST", body: { email } }),
   resetPassword: (token, newPassword) => request("/auth/reset-password", { method: "POST", body: { token, newPassword } }),
-  register: (salonName, name, username, password, email) =>
-    request("/auth/register", { method: "POST", body: { salonName, name, username, password, email } }),
+  register: (salonName, name, username, password, email, accessCode) =>
+    request("/auth/register", { method: "POST", body: { salonName, name, username, password, email, accessCode } }),
 
   getAppointments: () => request("/appointments"),
   addAppointment: (payload) => request("/appointments", { method: "POST", body: payload }),

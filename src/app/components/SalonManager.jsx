@@ -176,6 +176,7 @@ function LoginScreen({ onAuthed }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
+  const [accessCode, setAccessCode] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -191,7 +192,7 @@ function LoginScreen({ onAuthed }) {
     setBusy(true);
     try {
       const res = mode === "register"
-        ? await api.register(salonName.trim(), name.trim(), username.trim(), password, email.trim())
+        ? await api.register(salonName.trim(), name.trim(), username.trim(), password, email.trim(), accessCode.trim())
         : await api.login(username.trim(), password);
       onAuthed(res.token, res.user);
     } catch (err) {
@@ -260,6 +261,9 @@ function LoginScreen({ onAuthed }) {
                 </Field>
                 <Field label="Email Address">
                   <input className="vellora-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" style={inputStyle} />
+                </Field>
+                <Field label="Access Code">
+                  <input value={accessCode} onChange={(e) => setAccessCode(e.target.value)} placeholder="Salon Chair Wala se mila code" style={inputStyle} />
                 </Field>
               </>
             )}
@@ -1020,74 +1024,126 @@ function Team({ employees, setEmployees, inventory, setInventory, setLoadError, 
 
 function SuperAdminPanel({ token }) {
   const [salons, setSalons] = useState([]);
+  const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [generating, setGenerating] = useState(false);
+
+  const loadData = async () => {
+    try {
+      const [salonRes, codeRes] = await Promise.all([
+        fetch("/api/superadmin", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch("/api/superadmin/generate-code", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      ]);
+      if (salonRes.success) setSalons(salonRes.salons);
+      else setError(salonRes.error);
+      if (codeRes.success) setCodes(codeRes.codes);
+    } catch {
+      setError("Failed to establish secure connection with the administration database.");
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/superadmin", { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        if (data.success) setSalons(data.salons);
-        else setError(data.error);
-      } catch {
-        setError("Failed to establish secure connection with the administration database.");
-      }
-      setLoading(false);
-    })();
+    loadData();
   }, [token]);
+
+  const generateCode = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/superadmin/generate-code", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) await loadData();
+      else setError(data.error);
+    } catch {
+      setError("Code generate nahi ho paya.");
+    }
+    setGenerating(false);
+  };
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
-      <PageHeader title="Global Administration" sub="Overview of all registered salons and their key performance metrics." />
-      
+      <PageHeader
+        title="Global Administration"
+        sub="Overview of all registered salons and their key performance metrics."
+        action={
+          <button onClick={generateCode} disabled={generating} style={{ ...btnGhost, opacity: generating ? 0.7 : 1 }}>
+            <Plus size={15} /> {generating ? "Generating…" : "Generate New Code"}
+          </button>
+        }
+      />
+
       {loading && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.sub, fontSize: 14, marginTop: 32 }}>
           <Loader2 className="spinner" size={18} color={C.plum} /> Compiling global metrics...
         </div>
       )}
-      
+
       {error && (
         <div style={{ padding: "16px 20px", backgroundColor: C.redBg, borderLeft: `4px solid ${C.red}`, borderRadius: 8, marginBottom: 24 }}>
           <p style={{ color: C.red, fontSize: 14, margin: 0, fontWeight: 500 }}>{error}</p>
         </div>
       )}
-      
-      {!loading && !error && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {salons.length === 0 ? (
-            <p style={{ color: C.sub, fontSize: 14, padding: 32, textAlign: "center", background: C.card, borderRadius: 16, border: `1px dashed ${C.line}` }}>No registered salons found in the system.</p>
-          ) : (
-            salons.map((s) => (
-              <div key={s.id} className="vellora-card" style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 20, padding: "24px" }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-                    <div style={{ fontWeight: 600, fontSize: 18, color: C.ink, fontFamily: fontVoice }}>{s.name}</div>
-                    <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", padding: "3px 8px", borderRadius: 12, backgroundColor: C.goldBg, color: "#997340" }}>Active</span>
+
+      {!loading && (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 32 }}>
+            {salons.length === 0 ? (
+              <p style={{ color: C.sub, fontSize: 14, padding: 32, textAlign: "center", background: C.card, borderRadius: 16, border: `1px dashed ${C.line}` }}>No registered salons found in the system.</p>
+            ) : (
+              salons.map((s) => (
+                <div key={s.id} className="vellora-card" style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 20, padding: "24px" }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+                      <div style={{ fontWeight: 600, fontSize: 18, color: C.ink, fontFamily: fontVoice }}>{s.name}</div>
+                      <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", padding: "3px 8px", borderRadius: 12, backgroundColor: C.goldBg, color: "#997340" }}>Active</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: C.sub }}>System Entry: {s.created_at?.toString().slice(0, 10)}</div>
                   </div>
-                  <div style={{ fontSize: 13, color: C.sub }}>System Entry: {s.created_at?.toString().slice(0, 10)}</div>
+
+                  <div style={{ display: "flex", gap: 24, padding: "12px 20px", background: "#FCFAF8", borderRadius: 12, border: `1px solid ${C.line}` }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 11, color: C.sub, textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Bookings</div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: C.ink }}>{s.total_appointments}</div>
+                    </div>
+                    <div style={{ width: 1, background: C.line }}></div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 11, color: C.sub, textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Staff</div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: C.ink }}>{s.total_employees}</div>
+                    </div>
+                    <div style={{ width: 1, background: C.line }}></div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 11, color: C.sub, textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Net Revenue</div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: C.green }}>{money(s.total_revenue)}</div>
+                    </div>
+                  </div>
                 </div>
-                
-                <div style={{ display: "flex", gap: 24, padding: "12px 20px", background: "#FCFAF8", borderRadius: 12, border: `1px solid ${C.line}` }}>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 11, color: C.sub, textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Bookings</div>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: C.ink }}>{s.total_appointments}</div>
-                  </div>
-                  <div style={{ width: 1, background: C.line }}></div>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 11, color: C.sub, textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Staff</div>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: C.ink }}>{s.total_employees}</div>
-                  </div>
-                  <div style={{ width: 1, background: C.line }}></div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 11, color: C.sub, textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Net Revenue</div>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: C.green }}>{money(s.total_revenue)}</div>
-                  </div>
+              ))
+            )}
+          </div>
+
+          <h3 style={{ fontFamily: fontVoice, fontSize: 18, fontWeight: 500, color: C.ink, margin: "0 0 14px" }}>Access Codes</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {codes.length === 0 ? (
+              <p style={{ color: C.sub, fontSize: 14, padding: 32, textAlign: "center", background: C.card, borderRadius: 16, border: `1px dashed ${C.line}` }}>No access codes generated yet.</p>
+            ) : (
+              codes.map((c) => (
+                <div key={c.id} style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px" }}>
+                  <span style={{ fontFamily: "monospace", fontSize: 15, fontWeight: 600, color: C.ink, letterSpacing: 0.5 }}>{c.code}</span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, textTransform: "uppercase", padding: "3px 10px", borderRadius: 12,
+                    backgroundColor: c.is_used ? C.redBg : C.goldBg, color: c.is_used ? C.red : "#997340",
+                  }}>
+                    {c.is_used ? "Used" : "Available"}
+                  </span>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        </>
       )}
     </div>
   );
