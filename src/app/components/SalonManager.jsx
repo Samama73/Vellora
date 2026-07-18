@@ -67,6 +67,45 @@ function PageHeader({ title, sub, action }) {
   );
 }
 
+function ForgotPasswordLink() {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!email.trim()) return;
+    setBusy(true);
+    setStatus("");
+    try {
+      const res = await api.forgotPassword(email.trim());
+      setStatus(res.message || "Reset link has been sent at your registered email address.");
+    } catch (err) {
+      setStatus(err.message || "Kuch galat ho gaya.");
+    }
+    setBusy(false);
+  };
+
+  if (!open) {
+    return (
+      <p style={{ fontSize: 12.5, color: C.plum, marginTop: 12, textAlign: "center", cursor: "pointer" }} onClick={() => setOpen(true)}>
+        Forgot password?
+      </p>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 14, padding: 14, background: "#F7F2EE", borderRadius: 14 }}>
+      <p style={{ fontSize: 12.5, color: C.sub, marginBottom: 8 }}>Enter your registered email.</p>
+      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="" style={inputStyle} />
+      <button onClick={submit} disabled={busy} style={{ ...primaryBtn, marginTop: 10, opacity: busy ? 0.7 : 1 }}>
+        {busy ? "Sending…" : "Send reset link"}
+      </button>
+      {status && <p style={{ fontSize: 12, color: C.green, marginTop: 8 }}>{status}</p>}
+    </div>
+  );
+}
+
 /* ================= LOGIN / REGISTER ================= */
 function LoginScreen({ onAuthed }) {
   const [mode, setMode] = useState("login");
@@ -74,6 +113,7 @@ function LoginScreen({ onAuthed }) {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -89,7 +129,7 @@ function LoginScreen({ onAuthed }) {
     setBusy(true);
     try {
       const res = mode === "register"
-        ? await api.register(salonName.trim(), name.trim(), username.trim(), password)
+        ? await api.register(salonName.trim(), name.trim(), username.trim(), password, email.trim())
         : await api.login(username.trim(), password);
       onAuthed(res.token, res.user);
     } catch (err) {
@@ -143,10 +183,13 @@ function LoginScreen({ onAuthed }) {
             {mode === "register" && (
               <>
                 <Field label="Salon name">
-                  <input value={salonName} onChange={(e) => setSalonName(e.target.value)} placeholder="e.g. Glow Salon, Pune" style={inputStyle} />
+                  <input value={salonName} onChange={(e) => setSalonName(e.target.value)} placeholder="Enter your Salon Name" style={inputStyle} />
                 </Field>
                 <Field label="Your full name">
-                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ritika Shah" style={inputStyle} />
+                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your Full Name" style={inputStyle} />
+                </Field>
+                <Field label="Email">
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email address" style={inputStyle} />
                 </Field>
               </>
             )}
@@ -172,6 +215,9 @@ function LoginScreen({ onAuthed }) {
               <p style={{ fontSize: 12.5, color: C.sub, marginTop: 18, textAlign: "center" }}>
                 Are you an employee? Ask your salon owner for your username and password.
               </p>
+            )}
+            {mode === "login" && (
+              <ForgotPasswordLink />
             )}
           </form>
         </div>

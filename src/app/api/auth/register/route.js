@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 
 export async function POST(req) {
   try {
-    const { salonName, name, username, password } = await req.json();
+    const { salonName, name, username, password, email } = await req.json();
 
     if (!salonName || !name || !username || !password || password.length < 4) {
       return NextResponse.json({ success: false, error: 'Sab fields sahi bharo (password min 4 chars).' }, { status: 400 });
@@ -27,8 +27,8 @@ export async function POST(req) {
 
     // Uska pehla admin user banao
     await pool.query(
-      'INSERT INTO users (id, salon_id, name, username, password_hash, role) VALUES (?, ?, ?, ?, ?, ?)',
-      [userId, salonId, name, username, passwordHash, 'admin']
+      'INSERT INTO users (id, salon_id, name, username, password_hash, role, email) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [userId, salonId, name, username, passwordHash, 'admin', email || null]
     );
 
     const token = signToken({ userId, salonId, role: 'admin' });
