@@ -19,8 +19,8 @@ function ResetPasswordForm() {
   const submit = async (e) => {
     e.preventDefault();
     setStatus("");
-    if (password.length < 4) return setStatus("Password kam se kam 4 characters ka hona chahiye.");
-    if (password !== confirm) return setStatus("Dono password match nahi kar rahe.");
+    if (password.length < 4) return setStatus("Password should be of atleast 4 characters.");
+    if (password !== confirm) return setStatus("Password's did not match.");
 
     setBusy(true);
     try {
@@ -33,10 +33,10 @@ function ResetPasswordForm() {
       if (data.success) {
         setSuccess(true);
       } else {
-        setStatus(data.error || "Kuch galat ho gaya.");
+        setStatus(data.error || "Something went wrong.");
       }
     } catch {
-      setStatus("Network error, dobara try karo.");
+      setStatus("Network error, try again.");
     }
     setBusy(false);
   };
@@ -48,17 +48,17 @@ function ResetPasswordForm() {
   if (success) {
     return (
       <div style={{ textAlign: "center", fontFamily: fontSans }}>
-        <p style={{ color: C.green, fontSize: 15 }}>✅ Password reset ho gaya!</p>
-        <a href="/" style={{ color: C.plum, fontSize: 13.5 }}>Login page pe wapas jao</a>
+        <p style={{ color: C.green, fontSize: 15 }}>✅ Password updated successfully</p>
+        <a href="/" style={{ color: C.plum, fontSize: 13.5 }}>Please return to login page</a>
       </div>
     );
   }
 
   return (
     <form onSubmit={submit} style={{ width: "100%", maxWidth: 380, background: C.card, borderRadius: 24, padding: 32, border: `1px solid ${C.line}`, fontFamily: fontSans }}>
-      <h2 style={{ fontSize: 22, marginBottom: 16, color: C.ink }}>Naya password set karo</h2>
-      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Naya password" style={{ ...inputStyle, marginBottom: 12 }} />
-      <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Password dobara likho" style={inputStyle} />
+      <h2 style={{ fontSize: 22, marginBottom: 16, color: C.ink }}>Set your new password</h2>
+      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New password" style={{ ...inputStyle, marginBottom: 12 }} />
+      <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Re-enter your new password" style={inputStyle} />
       {status && <p style={{ color: C.red, fontSize: 13, marginTop: 10 }}>{status}</p>}
       <button type="submit" disabled={busy} style={{ ...primaryBtn, opacity: busy ? 0.7 : 1 }}>
         {busy ? "Saving…" : "Password reset karo"}

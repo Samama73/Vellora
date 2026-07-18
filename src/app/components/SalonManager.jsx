@@ -81,7 +81,7 @@ function ForgotPasswordLink() {
       const res = await api.forgotPassword(email.trim());
       setStatus(res.message || "Reset link has been sent at your registered email address.");
     } catch (err) {
-      setStatus(err.message || "Kuch galat ho gaya.");
+      setStatus(err.message || "Something went wrong.");
     }
     setBusy(false);
   };
