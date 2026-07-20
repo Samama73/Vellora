@@ -762,12 +762,12 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName }) {
 
 /* ================= MARKETING ================= */
 const MARKETING_TEMPLATES = [
-  { id: "t1", image: "/marketing/post1.png", rotate: -2, size: "large" },
-  { id: "t2", image: "/marketing/post2.png", rotate: 2, size: "medium" },
-  { id: "t3", image: "/marketing/post3.png", rotate: -1.5, size: "small" },
-  { id: "t4", image: "/marketing/post4.png", rotate: 2.5, size: "medium" },
-  { id: "t5", image: "/marketing/post5.png", rotate: -2, size: "medium" },
-  { id: "t6", image: "/marketing/post6.png", rotate: -1.5, size: "medium" },
+  { id: "t1", image: "/marketing/post1.jpg", rotate: -2, size: "large" },
+  { id: "t2", image: "/marketing/post2.jpg", rotate: 2, size: "medium" },
+  { id: "t3", image: "/marketing/post3.jpg", rotate: -1.5, size: "small" },
+  { id: "t4", image: "/marketing/post4.jpg", rotate: 2.5, size: "medium" },
+  { id: "t5", image: "/marketing/post5.jpg", rotate: -2, size: "medium" },
+  { id: "t6", image: "/marketing/post6.jpg", rotate: -1.5, size: "medium" },
   
 ];
 
