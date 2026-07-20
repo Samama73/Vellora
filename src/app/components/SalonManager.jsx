@@ -180,6 +180,7 @@ function LoginScreen({ onAuthed }) {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const isMobile = useIsMobile();
 
   const submit = async (e) => {
     e.preventDefault();
@@ -203,9 +204,9 @@ function LoginScreen({ onAuthed }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: C.ivory, fontFamily: fontSans }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: isMobile ? "column" : "row", background: C.ivory, fontFamily: fontSans }}>
       <GlobalFonts />
-      <div style={{ flex: 1, background: `linear-gradient(145deg, ${C.plum} 0%, #1A101C 100%)`, color: C.goldLight, display: "flex", flexDirection: "column", justifyContent: "center", padding: "5vw", minWidth: 0, position: "relative", overflow: "hidden" }}>
+      <div style={{ flex: isMobile ? "none" : 1, background: `linear-gradient(145deg, ${C.plum} 0%, #1A101C 100%)`, color: C.goldLight, display: "flex", flexDirection: "column", justifyContent: "center", padding: isMobile ? "40px 24px" : "5vw", minWidth: 0, position: "relative", overflow: "hidden" }}>
         {/* Decorative background element */}
         <div style={{ position: "absolute", top: "-10%", right: "-10%", width: "50%", height: "50%", background: "radial-gradient(circle, rgba(184,147,95,0.15) 0%, rgba(0,0,0,0) 70%)", borderRadius: "50%" }}></div>
         
@@ -221,7 +222,7 @@ function LoginScreen({ onAuthed }) {
               </span>
             </div>
           </div>
-          <h1 style={{ fontFamily: fontVoice, fontSize: "clamp(32px, 4.5vw, 52px)", lineHeight: 1.1, fontWeight: 500, margin: 0, maxWidth: 540, color: "#fff" }}>
+          <h1 style={{ fontFamily: fontVoice, fontSize: isMobile ? "26px" : "clamp(32px, 4.5vw, 52px)", lineHeight: 1.15, fontWeight: 500, margin: 0, maxWidth: 540, color: "#fff" }}>
             Elevate your salon management experience.
           </h1>
           <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 16, marginTop: 24, maxWidth: 460, lineHeight: 1.6 }}>
@@ -230,7 +231,7 @@ function LoginScreen({ onAuthed }) {
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? "20px 16px 40px" : 24 }}>
         <div style={{ width: "100%", maxWidth: 420 }}>
           <div style={{ display: "flex", gap: 8, marginBottom: 24, background: "#F2ECE7", padding: 6, borderRadius: 14 }}>
             {[["login", "Sign In"], ["register", "Register Salon"]].map(([m, label]) => (
