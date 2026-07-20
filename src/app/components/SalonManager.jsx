@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Calendar, Users, Wallet, Package, Image as ImageIcon, LayoutDashboard,
-  LogOut, Plus, Trash2, Eye, EyeOff, Scissors, Check, Loader2, ChevronRight
+  LogOut, Plus, Trash2, Eye, EyeOff, Scissors, Check, Loader2, ChevronRight, MessageCircle
 } from "lucide-react";
 import { api, saveSession, loadSession, clearSession } from "./api";
 
@@ -263,7 +263,7 @@ function LoginScreen({ onAuthed }) {
                   <input className="vellora-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" style={inputStyle} />
                 </Field>
                 <Field label="Access Code">
-                  <input value={accessCode} onChange={(e) => setAccessCode(e.target.value)} placeholder="Salon Chair Wala se mila code" style={inputStyle} />
+                  <input value={accessCode} onChange={(e) => setAccessCode(e.target.value)} placeholder="Enter your Access Code" style={inputStyle} />
                 </Field>
               </>
             )}
@@ -494,7 +494,7 @@ export default function SalonManager() {
         )}
 
         {tab === "dashboard" && <Dashboard appts={appts} inventory={inventory} employees={employees} isMobile={isMobile} />}
-        {tab === "appointments" && <Appointments appts={appts} setAppts={setAppts} setLoadError={setLoadError} isMobile={isMobile} />}
+        {tab === "appointments" && <Appointments appts={appts} setAppts={setAppts} setLoadError={setLoadError} isMobile={isMobile} salonName={user.salonName || "our salon"} />}
         {tab === "marketing" && <Marketing user={user} isMobile={isMobile} />}
         {tab === "accounts" && <Accounts salaries={salaries} setSalaries={setSalaries} employees={employees} setLoadError={setLoadError} isMobile={isMobile} />}
         {tab === "team" && <Team employees={employees} setEmployees={setEmployees} inventory={inventory} setInventory={setInventory} setLoadError={setLoadError} isMobile={isMobile} />}
@@ -598,8 +598,9 @@ const getStatusBadge = (status) => {
   return styles[status] || styles["not visited"];
 };
 
-function Appointments({ appts, setAppts, setLoadError, isMobile }) {
+function Appointments({ appts, setAppts, setLoadError, isMobile, salonName }) {
   const [showForm, setShowForm] = useState(false);
+  const [filterDate, setFilterDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ client: "", phone: "", service: "", date: todayISO(), time: "10:00", employee: "", price: "" });
 
@@ -640,12 +641,50 @@ function Appointments({ appts, setAppts, setLoadError, isMobile }) {
     }
   };
 
+  const getWhatsAppLink = (appt, salonName) => {
+  if (!appt.phone) return null;
+  
+  const message = `Hey ${appt.client}!
+
+  Just confirming - you're all booked in at *${salonName}*!
+
+  Date: ${appt.date}
+  Time: ${appt.time}
+  Service: ${appt.service}
+
+  Can't wait to see you! Reach out anytime if plans change.
+
+  See you soon,
+  ${salonName}`;
+
+  const cleanPhone = appt.phone.replace(/\D/g, '');
+  const phoneWithCountryCode = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+  return `https://wa.me/${phoneWithCountryCode}?text=${encodeURIComponent(message)}`;
+};
+
   return (
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
       <PageHeader title="Appointments" sub="Manage client bookings, schedules, and payment statuses."
         action={<button className="vellora-btn-ghost" style={btnGhost} onClick={() => setShowForm((s) => !s)}>
           {showForm ? "Cancel" : <><Plus size={16} /> New Booking</>}
         </button>} />
+
+      <div style={{ ...card, marginBottom: 20, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", padding: "16px 20px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <label style={{ fontSize: 13, fontWeight: 500, color: C.sub }}>View by date:</label>
+    <input type="date" className="vellora-input" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} style={{ ...inputStyle, width: "auto" }} />
+  </div>
+  {filterDate && (
+    <>
+      <span style={{ fontSize: 14, fontWeight: 600, color: C.plum }}>
+        {appts.filter((a) => a.date === filterDate).length} appointment{appts.filter((a) => a.date === filterDate).length !== 1 ? "s" : ""} on this day
+      </span>
+      <button onClick={() => setFilterDate("")} style={{ background: "none", border: "none", color: C.sub, fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
+        Clear filter
+      </button>
+    </>
+  )}
+</div>
 
       {showForm && (
         <div className="vellora-card" style={{ ...card, marginBottom: 24, background: "#FDFBF9", border: `1px solid ${C.goldLight}` }}>
@@ -668,13 +707,18 @@ function Appointments({ appts, setAppts, setLoadError, isMobile }) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {appts.length === 0 && (
-          <div style={{ padding: "48px 0", textAlign: "center", background: C.card, borderRadius: 16, border: `1px dashed ${C.line}` }}>
-            <Calendar size={32} color={C.line} style={{ marginBottom: 16 }} />
-            <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 500, color: C.ink }}>No appointments found</h3>
-            <p style={{ color: C.sub, fontSize: 14, margin: 0 }}>Your schedule is currently empty.</p>
-          </div>
+          <div style={{ padding: "32px 24px", textAlign: "center", background: "#FCFAF8", borderRadius: 16, border: `1px dashed ${C.line}` }}>
+  <div style={{ width: 48, height: 48, borderRadius: 12, background: C.goldLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+    <Calendar size={22} color={C.gold} />
+  </div>
+  <h3 style={{ margin: "0 0 4px", fontSize: 14.5, fontWeight: 600, color: C.ink }}>No appointments found</h3>
+  <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>Your schedule is currently empty.</p>
+</div>
         )}
-        {[...appts].sort((a, b) => b.date.localeCompare(a.date)).map((a) => {
+        {[...appts]
+        .filter((a) => !filterDate || a.date === filterDate)
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .map((a) => {
           const badge = getStatusBadge(a.status);
           return (
             <div key={a.id} className="vellora-card" style={{ ...card, padding: isMobile ? "16px" : "20px 24px", display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", gap: 16 }}>
@@ -701,7 +745,12 @@ function Appointments({ appts, setAppts, setLoadError, isMobile }) {
                     {APPT_STATUS.map((s) => <option key={s} value={s}>{s.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
                   </select>
                 </div>
-                <button className="vellora-icon-btn" style={{...iconBtn, marginTop: 18}} onClick={() => remove(a.id)} title="Delete Appointment"><Trash2 size={18} /></button>
+                {getWhatsAppLink(a, salonName) && (
+                  <a href={getWhatsAppLink(a, salonName)} target="_blank" rel="noopener noreferrer" className="vellora-icon-btn" style={{ ...iconBtn, marginTop: 18, color: "#25D366" }} title="Send WhatsApp Confirmation">
+                    <MessageCircle size={18} />
+                  </a>
+                )}
+                 <button className="vellora-icon-btn" style={{...iconBtn, marginTop: 18}} onClick={() => remove(a.id)} title="Delete Appointment"><Trash2 size={18} /></button>
               </div>
             </div>
           );
@@ -713,33 +762,134 @@ function Appointments({ appts, setAppts, setLoadError, isMobile }) {
 
 /* ================= MARKETING ================= */
 const MARKETING_TEMPLATES = [
-  { id: "t1", image: "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600&q=80", caption: "Book your next premium experience with us today." },
-  { id: "t2", image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&q=80", caption: "Fresh looks, expert hands — precision in every visit." },
-  { id: "t3", image: "https://images.unsplash.com/photo-1633681926022-84c23e8cb2d6?w=600&q=80", caption: "Indulge in luxury. Pamper yourself, you deserve it." },
-  { id: "t4", image: "https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=600&q=80", caption: "New season, refined style. Walk in and transform today." },
+  { id: "t1", image: "/marketing/post1.png", rotate: -2, size: "large" },
+  { id: "t2", image: "/marketing/post2.png", rotate: 2, size: "medium" },
+  { id: "t3", image: "/marketing/post3.png", rotate: -1.5, size: "small" },
+  { id: "t4", image: "/marketing/post4.png", rotate: 2.5, size: "medium" },
+  { id: "t5", image: "/marketing/post5.png", rotate: -2, size: "medium" },
+  { id: "t6", image: "/marketing/post6.png", rotate: -1.5, size: "medium" },
+  
 ];
 
-function Marketing({ user }) {
+function Marketing({ user, isMobile }) {
+  const [processing, setProcessing] = useState(null);
+
+  const sizeMap = {
+    large: { width: isMobile ? "100%" : 340 },
+    medium: { width: isMobile ? "100%" : 280 },
+    small: { width: isMobile ? "100%" : 230 },
+  };
+
+  const salonName = user.salonName || "Your Salon";
+  const collabText = `Salon Chair Wala × ${salonName}`;
+
+  const generateAndShare = async (imagePath, id) => {
+    setProcessing(id);
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = imagePath;
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+
+      // Original poster draw karo
+      ctx.drawImage(img, 0, 0);
+
+      // Neeche gradient overlay banao taaki text readable rahe
+      const gradientHeight = img.height * 0.16;
+      const gradient = ctx.createLinearGradient(0, img.height - gradientHeight, 0, img.height);
+      gradient.addColorStop(0, "rgba(26,18,28,0)");
+      gradient.addColorStop(1, "rgba(26,18,28,0.88)");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, img.height - gradientHeight, img.width, gradientHeight);
+
+      // Collab text likho
+      const fontSize = Math.max(18, Math.round(img.width * 0.032));
+      ctx.font = `600 ${fontSize}px Georgia, serif`;
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.shadowColor = "rgba(0,0,0,0.5)";
+      ctx.shadowBlur = 8;
+      ctx.fillText(collabText, img.width / 2, img.height - gradientHeight * 0.32);
+
+      // Canvas ko image file mein convert karo
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+      const file = new File([blob], `${salonName.replace(/\s+/g, "-")}-poster.jpg`, { type: "image/jpeg" });
+
+      // Mobile pe native share (WhatsApp seedha option milega), warna download
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: collabText,
+          text: `Check out ${salonName}!`,
+        });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error("Poster generate karne mein dikkat aayi:", err);
+    }
+    setProcessing(null);
+  };
+
   return (
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
-      <PageHeader title="Marketing Hub" sub="Professional, ready-to-share promotional assets branded for your salon." />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 24 }}>
-        {MARKETING_TEMPLATES.map((t) => (
-          <div key={t.id} className="vellora-card" style={{ ...card, padding: 0, overflow: "hidden", border: "none", boxShadow: "0 8px 24px -12px rgba(43,27,46,0.2)" }}>
-            <div style={{ position: "relative", overflow: "hidden" }}>
-              <div style={{ width: "100%", height: 200, backgroundImage: `url(${t.image})`, backgroundSize: "cover", backgroundPosition: "center", transition: "transform 0.4s ease" }} className="marketing-img" onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.05)"} onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"} />
-              
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(26,18,28,0) 30%, rgba(26,18,28,0.85) 100%)", display: "flex", alignItems: "flex-end", padding: 20, pointerEvents: "none" }}>
-                <span style={{ fontFamily: fontVoice, color: "#fff", fontSize: 22, fontWeight: 600, letterSpacing: 0.5, textShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>
-                  {user.salonName || "Your Salon"}
-                </span>
+      <PageHeader title="Marketing Hub" sub="Ready-to-share promotional posters for your salon." />
+
+      <div style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: isMobile ? 24 : 56,
+        justifyContent: isMobile ? "center" : "flex-start",
+        alignItems: "flex-start",
+        padding: isMobile ? "10px 0" : "30px 20px",
+      }}>
+        {MARKETING_TEMPLATES.map((t, idx) => (
+          <div
+            key={t.id}
+            onClick={() => generateAndShare(t.image, t.id)}
+            style={{
+              ...sizeMap[t.size],
+              transform: isMobile ? "none" : `rotate(${t.rotate}deg)`,
+              marginTop: !isMobile && idx % 2 === 1 ? 30 : 0,
+              transition: "transform 0.25s ease, box-shadow 0.25s ease",
+              cursor: "pointer",
+              opacity: processing === t.id ? 0.6 : 1,
+              position: "relative",
+            }}
+            onMouseOver={(e) => { if (!isMobile) e.currentTarget.style.transform = "rotate(0deg) scale(1.04)"; e.currentTarget.style.zIndex = 10; }}
+            onMouseOut={(e) => { if (!isMobile) e.currentTarget.style.transform = `rotate(${t.rotate}deg)`; e.currentTarget.style.zIndex = 1; }}
+          >
+            <div style={{ background: C.card, padding: 10, borderRadius: 12, boxShadow: "0 12px 30px -10px rgba(43,27,46,0.25)", border: `1px solid ${C.line}` }}>
+              <div style={{ position: "relative", borderRadius: 6, overflow: "hidden" }}>
+                <img src={t.image} alt="Marketing post" style={{ width: "100%", display: "block" }} />
+                <div style={{
+                  position: "absolute", bottom: 0, left: 0, right: 0,
+                  background: "linear-gradient(180deg, rgba(26,18,28,0) 0%, rgba(26,18,28,0.85) 100%)",
+                  padding: "24px 14px 12px", textAlign: "center",
+                }}>
+                  <span style={{ fontFamily: fontVoice, color: "#fff", fontSize: 15, fontWeight: 600, letterSpacing: 0.3, textShadow: "0 2px 6px rgba(0,0,0,0.4)" }}>
+                    {collabText}
+                  </span>
+                </div>
+                {processing === t.id && (
+                  <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Loader2 className="spinner" size={28} color="#fff" />
+                  </div>
+                )}
               </div>
-            </div>
-            <div style={{ padding: "20px" }}>
-              <p style={{ fontSize: 14.5, margin: 0, lineHeight: 1.6, color: C.ink, fontWeight: 500 }}>{t.caption}</p>
-              <button className="vellora-btn-ghost" style={{ ...btnGhost, width: "100%", justifyContent: "center", marginTop: 16, background: C.goldLight, color: "#997340", boxShadow: "none" }}>
-                Share Post
-              </button>
             </div>
           </div>
         ))}
@@ -747,7 +897,6 @@ function Marketing({ user }) {
     </div>
   );
 }
-
 /* ================= ACCOUNTS ================= */
 function Accounts({ salaries, setSalaries, employees, setLoadError, isMobile }) {
   const [saving, setSaving] = useState(false);
@@ -817,11 +966,13 @@ function Accounts({ salaries, setSalaries, employees, setLoadError, isMobile }) 
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {salaries.length === 0 && (
-           <div style={{ padding: "48px 0", textAlign: "center", background: C.card, borderRadius: 16, border: `1px dashed ${C.line}` }}>
-             <Wallet size={32} color={C.line} style={{ marginBottom: 16 }} />
-             <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 500, color: C.ink }}>No records found</h3>
-             <p style={{ color: C.sub, fontSize: 14, margin: 0 }}>Financial transactions will appear here.</p>
-           </div>
+           <div style={{ padding: "32px 24px", textAlign: "center", background: "#FCFAF8", borderRadius: 16, border: `1px dashed ${C.line}` }}>
+  <div style={{ width: 48, height: 48, borderRadius: 12, background: C.goldLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+    <Wallet size={22} color={C.gold} />
+  </div>
+  <h3 style={{ margin: "0 0 4px", fontSize: 14.5, fontWeight: 600, color: C.ink }}>No records found</h3>
+  <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>Financial transactions will appear here.</p>
+</div>
         )}
         {salaries.map((s) => (
           <div key={s.id} className="vellora-card" style={{ ...card, padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -954,7 +1105,7 @@ function Team({ employees, setEmployees, inventory, setInventory, setLoadError, 
           </div>
           
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
-            {employees.length === 0 && <p style={{ color: C.sub, fontSize: 14, gridColumn: "1/-1", textAlign: "center", padding: 32 }}>No staff members registered.</p>}
+            {employees.length === 0 && <p style={{ color: C.sub, fontSize: 14, gridColumn: "1/-1", textAlign: "center", padding: "32px 24px", background: "#FCFAF8", borderRadius: 16, border: `1px dashed ${C.line}` }}>No staff members registered.</p>}
             {employees.map((e) => (
               <div key={e.id} className="vellora-card" style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -990,11 +1141,13 @@ function Team({ employees, setEmployees, inventory, setInventory, setLoadError, 
           
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {inventory.length === 0 && (
-               <div style={{ padding: "48px 0", textAlign: "center", background: C.card, borderRadius: 16, border: `1px dashed ${C.line}` }}>
-                 <Package size={32} color={C.line} style={{ marginBottom: 16 }} />
-                 <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 500, color: C.ink }}>Inventory is empty</h3>
-                 <p style={{ color: C.sub, fontSize: 14, margin: 0 }}>Add products to start tracking your stock.</p>
-               </div>
+               <div style={{ padding: "32px 24px", textAlign: "center", background: "#FCFAF8", borderRadius: 16, border: `1px dashed ${C.line}` }}>
+  <div style={{ width: 48, height: 48, borderRadius: 12, background: C.goldLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+    <Package size={22} color={C.gold} />
+  </div>
+  <h3 style={{ margin: "0 0 4px", fontSize: 14.5, fontWeight: 600, color: C.ink }}>Inventory is empty</h3>
+  <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>Add products to start tracking your stock.</p>
+</div>
             )}
             {inventory.map((i) => {
               const low = Number(i.qty) <= Number(i.reorder_level || 0);

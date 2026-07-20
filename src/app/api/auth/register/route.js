@@ -9,10 +9,10 @@ export async function POST(req) {
     const { salonName, name, username, password, email, accessCode } = await req.json();
 
     if (!salonName || !name || !username || !password || password.length < 4) {
-      return NextResponse.json({ success: false, error: 'Sab fields sahi bharo (password min 4 chars).' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Please fill all your details).' }, { status: 400 });
     }
     if (!accessCode) {
-      return NextResponse.json({ success: false, error: 'Access code zaroori hai. Salon Chair Wala se apna code lo.' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Please ask Salon Chair Wala for the Access Code.' }, { status: 400 });
     }
 
     // Access code check karo
@@ -21,12 +21,12 @@ export async function POST(req) {
       [accessCode.trim().toUpperCase()]
     );
     if (codeRows.length === 0) {
-      return NextResponse.json({ success: false, error: 'Invalid ya already-used access code.' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Invalid or Already-Used Access Code.' }, { status: 400 });
     }
 
     const [existing] = await pool.query('SELECT id FROM users WHERE username = ?', [username]);
     if (existing.length > 0) {
-      return NextResponse.json({ success: false, error: 'Username pehle se liya gaya hai.' }, { status: 409 });
+      return NextResponse.json({ success: false, error: 'Username already taken.' }, { status: 409 });
     }
 
     const salonId = randomUUID();
@@ -55,7 +55,7 @@ export async function POST(req) {
 
     const token = signToken({ userId, salonId, role: 'admin' });
 
-    return NextResponse.json({ success: true, token, user: { id: userId, name, role: 'admin', salonId } });
+    return NextResponse.json({ success: true, token, user: { id: userId, name, role: 'admin', salonId, salonName } });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
