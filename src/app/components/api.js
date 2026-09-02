@@ -31,6 +31,11 @@ export const api = {
     request("/auth/register", { method: "POST", body: { salonName, name, username, password, email, accessCode } }),
 
   getAppointments: () => request("/appointments"),
+  getReports: (period) => request(`/reports?period=${period}`),
+  getSettings: () => request("/settings"),
+  updateSettings: (payload) => request("/settings", { method: "PUT", body: payload }),
+  getSalonSettings: () => request("/salon-settings"),
+  updateSalonSettings: (payload) => request("/salon-settings", { method: "PUT", body: payload }),
   addAppointment: (payload) => request("/appointments", { method: "POST", body: payload }),
   updateAppointmentStatus: (id, status) => request(`/appointments/${id}`, { method: "PUT", body: { status } }),
   deleteAppointment: (id) => request(`/appointments/${id}`, { method: "DELETE" }),
@@ -46,6 +51,9 @@ export const api = {
   getEmployees: () => request("/users"),
   addEmployee: (payload) => request("/users", { method: "POST", body: payload }),
   deleteEmployee: (id) => request(`/users/${id}`, { method: "DELETE" }),
+
+  getCustomers: () => request("/customers"),
+  search: (q) => request(`/search?q=${encodeURIComponent(q)}`),
 };
 
 export function saveSession(token, user) {

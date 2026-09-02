@@ -5,9 +5,9 @@ const config: CapacitorConfig = {
   appName: 'Vellora',
   webDir: 'public', // Capacitor ko required hai, lekin hum use nahi karenge kyunki server.url set hai
   server: {
-    url: 'https://vellora-tan.vercel.app/', // apna actual live URL yaha daalo
-    cleartext: true
-  }
+      url: 'https://vellora.salonchairwala.com',
+      cleartext: false
+    }
 };
 
 export default config;

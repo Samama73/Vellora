@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Calendar, Users, Wallet, Package, Image as ImageIcon, LayoutDashboard,
-  LogOut, Plus, Trash2, Eye, EyeOff, Scissors, Check, Loader2, ChevronRight, MessageCircle
+  LogOut, Plus, Trash2, Eye, EyeOff, Scissors, Check, Loader2, ChevronRight, MessageCircle, TrendingUp, Settings as SettingsIcon, Sparkles, Search, Bell
 } from "lucide-react";
 import { api, saveSession, loadSession, clearSession } from "./api";
 
@@ -46,7 +46,6 @@ function GlobalFonts() {
     <>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" />
       <style>{`
-        /* Global CSS for Animations and Focus States */
         .vellora-input:focus {
           border-color: ${C.plum} !important;
           box-shadow: 0 0 0 4px rgba(43, 27, 46, 0.08);
@@ -54,29 +53,180 @@ function GlobalFonts() {
         }
         .vellora-btn:hover:not(:disabled) {
           background-color: ${C.plumHover} !important;
-          transform: translateY(-1px);
+          transform: translateY(-2px) scale(1.02);
           box-shadow: 0 10px 25px -8px rgba(43,27,46,0.5) !important;
         }
+        .vellora-btn:active:not(:disabled) {
+          transform: translateY(0) scale(0.97);
+        }
         .vellora-btn-ghost:hover:not(:disabled) {
-          transform: translateY(-1px);
+          transform: translateY(-2px) scale(1.03);
           box-shadow: 0 8px 20px -8px rgba(43,27,46,0.3) !important;
         }
+        .vellora-btn-ghost:active:not(:disabled) {
+          transform: scale(0.96);
+        }
         .vellora-card {
-          transition: all 0.2s ease;
+          transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .vellora-card:hover {
-          box-shadow: 0 12px 30px -12px rgba(43,27,46,0.12) !important;
+          box-shadow: 0 16px 34px -14px rgba(43,27,46,0.18) !important;
+          transform: translateY(-4px);
+        }
+        .vellora-icon-btn {
+          transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .vellora-icon-btn:hover {
           background-color: ${C.line} !important;
           color: ${C.red} !important;
+          transform: scale(1.15) rotate(-6deg);
+        }
+        .nav-item {
+          transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
         }
         .nav-item:hover {
           background-color: rgba(184,147,95,0.08) !important;
+          transform: translateX(4px);
         }
+        .nav-item svg {
+          transition: transform 0.2s ease;
+        }
+        .nav-item:hover svg {
+          transform: scale(1.15) rotate(-8deg);
+        }
+
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .spinner { animation: spin 1s linear infinite; }
-        
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes popIn {
+          0% { opacity: 0; transform: scale(0.85) translateY(10px); }
+          60% { transform: scale(1.03); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .pop-in { animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-10px) rotate(3deg); }
+        }
+        .float-deco { animation: float 6s ease-in-out infinite; }
+
+        @keyframes bounceIn {
+          0% { transform: scale(0); opacity: 0; }
+          50% { transform: scale(1.15); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .bounce-in { animation: bounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+        @keyframes confettiFall {
+          0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(300px) rotate(720deg); opacity: 0; }
+        }
+        .confetti-piece { animation: confettiFall 1.2s ease-in forwards; }
+
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+
+        @keyframes scissorSnip {
+          0%, 100% { transform: rotate(0deg); }
+          10% { transform: rotate(-18deg); }
+          20% { transform: rotate(6deg); }
+          30% { transform: rotate(-18deg); }
+          40% { transform: rotate(0deg); }
+        }
+        .scissor-snip {
+          display: inline-flex;
+          transform-origin: 50% 50%;
+          animation: scissorSnip 3.5s ease-in-out infinite;
+        }
+
+        @keyframes scissorEnter {
+          0% { opacity: 0; transform: translateX(-60px) rotate(-25deg); }
+          60% { opacity: 1; transform: translateX(6px) rotate(8deg); }
+          100% { opacity: 1; transform: translateX(0) rotate(0deg); }
+        }
+        .scissor-icon-wrap {
+          animation: scissorEnter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .login-fade-1 { animation: fadeInUp 0.6s ease-out both; }
+        .login-fade-2 { animation: fadeInUp 0.6s ease-out 0.15s both; }
+        .login-fade-3 { animation: fadeInUp 0.6s ease-out 0.3s both; }
+
+        @keyframes pulseGlow {
+          0%, 100% { opacity: 0.15; transform: scale(1); }
+          50% { opacity: 0.3; transform: scale(1.08); }
+        }
+        .glow-pulse { animation: pulseGlow 4s ease-in-out infinite; }
+
+        @keyframes shine {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        .gold-shine {
+          background: linear-gradient(90deg, #fff 0%, ${'${C.gold}'} 50%, #fff 100%);
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          animation: shine 3s linear infinite;
+        }
+
+        @keyframes iconFloat1 {
+          0%, 100% { transform: translateY(0) rotate(12deg); }
+          50% { transform: translateY(-14px) rotate(18deg); }
+        }
+        @keyframes iconFloat2 {
+          0%, 100% { transform: translateY(0) rotate(-8deg); }
+          50% { transform: translateY(12px) rotate(-14deg); }
+        }
+        @keyframes iconFloat3 {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-10px) rotate(6deg); }
+        }
+        .bg-icon-1 { animation: iconFloat1 7s ease-in-out infinite; }
+        .bg-icon-2 { animation: iconFloat2 8s ease-in-out infinite; }
+        .bg-icon-3 { animation: iconFloat3 6.5s ease-in-out infinite; }
+
+        @keyframes cardEnter {
+          from { opacity: 0; transform: translateY(24px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .form-card-enter { animation: cardEnter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+        @keyframes fieldFade {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .field-fade-1 { animation: fieldFade 0.4s ease-out 0.1s both; }
+        .field-fade-2 { animation: fieldFade 0.4s ease-out 0.18s both; }
+        .field-fade-3 { animation: fieldFade 0.4s ease-out 0.26s both; }
+
+        .tab-switcher {
+          position: relative;
+        }
+        .tab-indicator {
+          position: absolute;
+          top: 6px;
+          bottom: 6px;
+          border-radius: 10px;
+          background: ${C.card};
+          box-shadow: 0 4px 12px -4px rgba(43,27,46,0.15);
+          transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          z-index: 0;
+        }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -100,7 +250,7 @@ const primaryBtn = {
   display: "flex", justifyContent: "center", alignItems: "center", gap: 8
 };
 
-const card = { background: C.card, border: `1px solid ${C.line}`, borderRadius: 16, padding: "24px", boxShadow: "0 4px 14px -10px rgba(43,27,46,0.12)" };
+const card = { background: C.card, border: `1px solid ${C.line}`, borderRadius: 18, padding: "24px", boxShadow: "0 2px 8px -4px rgba(43,27,46,0.08)" };
 
 const btnGhost = { display: "flex", alignItems: "center", gap: 6, background: C.plum, color: "#fff", border: "none", padding: "10px 18px", borderRadius: 12, fontSize: 13.5, fontWeight: 500, cursor: "pointer", fontFamily: fontSans, boxShadow: "0 6px 16px -8px rgba(43,27,46,0.4)", transition: "all 0.2s ease" };
 
@@ -116,13 +266,127 @@ function Field({ label, children }) {
 }
 
 function PageHeader({ title, sub, action }) {
+  const mobile = useIsMobile();
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 32, flexWrap: "wrap", gap: 16 }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: mobile ? 18 : 32, flexWrap: "wrap", gap: mobile ? 10 : 16 }}>
       <div>
-        <h1 style={{ fontFamily: fontVoice, fontSize: 28, fontWeight: 600, margin: 0, color: C.ink }}>{title}</h1>
-        {sub && <p style={{ color: C.sub, fontSize: 14.5, margin: "6px 0 0", lineHeight: 1.5 }}>{sub}</p>}
+        <h1 style={{ fontFamily: fontVoice, fontSize: mobile ? 19 : 28, fontWeight: 600, margin: 0, color: C.ink }}>{title}</h1>
+        {sub && <p style={{ color: C.sub, fontSize: mobile ? 12 : 14.5, margin: "4px 0 0", lineHeight: 1.4 }}>{sub}</p>}
       </div>
       {action}
+    </div>
+  );
+}
+
+function SearchBar({ setTab }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState(null);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setResults(null);
+      return;
+    }
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await api.search(query.trim());
+        setResults(res.results);
+      } catch {
+        setResults(null);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const goTo = (tabId) => {
+    setTab(tabId);
+    setOpen(false);
+    setQuery("");
+    setResults(null);
+  };
+
+  const hasResults = results && (results.appointments.length || results.inventory.length || results.employees.length);
+
+  return (
+    <div ref={boxRef} style={{ position: "relative", flex: 1, maxWidth: 480 }}>
+      <Search size={16} color={C.sub} style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)" }} />
+      <input
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder="Search appointments, inventory, staff..."
+        style={{ width: "100%", padding: "12px 16px 12px 42px", fontSize: 13.5, borderRadius: 999, border: "none", outline: "none", fontFamily: fontSans, color: C.ink, boxSizing: "border-box", background: C.goldLight }}
+      />
+
+      {open && query.trim().length >= 2 && (
+        <div style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, right: 0, background: C.card, borderRadius: 14, border: `1px solid ${C.line}`, boxShadow: "0 16px 40px -12px rgba(43,27,46,0.25)", zIndex: 50, maxHeight: 360, overflowY: "auto", padding: 8 }}>
+          {loading && (
+            <div style={{ padding: "14px 12px", display: "flex", alignItems: "center", gap: 8, color: C.sub, fontSize: 13 }}>
+              <Loader2 className="spinner" size={14} /> Searching...
+            </div>
+          )}
+
+          {!loading && !hasResults && (
+            <div style={{ padding: "14px 12px", color: C.sub, fontSize: 13 }}>No results for &quot;{query}&quot;.</div>
+          )}
+
+          {!loading && results?.appointments?.length > 0 && (
+            <div style={{ marginBottom: 6 }}>
+              <div style={{ padding: "6px 10px", fontSize: 10.5, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: 0.5 }}>Appointments</div>
+              {results.appointments.map((a) => (
+                <div key={a.id} onClick={() => goTo("appointments")} style={{ padding: "8px 10px", borderRadius: 8, cursor: "pointer" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = C.goldLight}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{a.client}</div>
+                  <div style={{ fontSize: 11.5, color: C.sub }}>{a.service} · {a.date}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!loading && results?.inventory?.length > 0 && (
+            <div style={{ marginBottom: 6 }}>
+              <div style={{ padding: "6px 10px", fontSize: 10.5, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: 0.5 }}>Inventory</div>
+              {results.inventory.map((i) => (
+                <div key={i.id} onClick={() => goTo("team")} style={{ padding: "8px 10px", borderRadius: 8, cursor: "pointer" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = C.goldLight}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{i.name}</div>
+                  <div style={{ fontSize: 11.5, color: C.sub }}>{i.qty} {i.unit} in stock</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!loading && results?.employees?.length > 0 && (
+            <div>
+              <div style={{ padding: "6px 10px", fontSize: 10.5, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: 0.5 }}>Staff</div>
+              {results.employees.map((e) => (
+                <div key={e.id} onClick={() => goTo("team")} style={{ padding: "8px 10px", borderRadius: 8, cursor: "pointer" }}
+                  onMouseEnter={(ev) => ev.currentTarget.style.background = C.goldLight}
+                  onMouseLeave={(ev) => ev.currentTarget.style.background = "transparent"}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{e.name}</div>
+                  <div style={{ fontSize: 11.5, color: C.sub }}>{e.position || "Staff"}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -206,14 +470,18 @@ function LoginScreen({ onAuthed }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: isMobile ? "column" : "row", background: C.ivory, fontFamily: fontSans }}>
       <GlobalFonts />
-      <div style={{ flex: isMobile ? "none" : 1, background: `linear-gradient(145deg, ${C.plum} 0%, #1A101C 100%)`, color: C.goldLight, display: "flex", flexDirection: "column", justifyContent: "center", padding: isMobile ? "40px 24px" : "5vw", minWidth: 0, position: "relative", overflow: "hidden" }}>
+      <div style={{ flex: isMobile ? "none" : 1, background: `
+        radial-gradient(circle at 1px 1px, rgba(184,147,95,0.12) 1px, transparent 0) 0 0/28px 28px,
+        linear-gradient(145deg, ${C.plum} 0%, #1A101C 100%)
+  `, color: C.goldLight, display: "flex", flexDirection: "column", justifyContent: "center", padding: isMobile ? "40px 24px" : "5vw", minWidth: 0, position: "relative", overflow: "hidden" }}>
         {/* Decorative background element */}
-        <div style={{ position: "absolute", top: "-10%", right: "-10%", width: "50%", height: "50%", background: "radial-gradient(circle, rgba(184,147,95,0.15) 0%, rgba(0,0,0,0) 70%)", borderRadius: "50%" }}></div>
-        
+        <div className="glow-pulse" style={{ position: "absolute", top: "-10%", right: "-10%", width: "50%", height: "50%", background: "radial-gradient(circle, rgba(184,147,95,0.15) 0%, rgba(0,0,0,0) 70%)", borderRadius: "50%" }}></div>
         <div style={{ position: "relative", zIndex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 40 }}>
-            <div style={{ background: "rgba(184,147,95,0.15)", padding: 12, borderRadius: 16 }}>
-              <Scissors size={32} color={C.gold} />
+            <div className="scissor-icon-wrap" style={{ background: "rgba(184,147,95,0.15)", padding: 12, borderRadius: 16 }}>
+              <span className="scissor-snip">
+                <Scissors size={32} color={C.gold} />
+              </span>
             </div>
             <div>
               <span style={{ fontFamily: fontVoice, fontSize: 32, fontWeight: 600, letterSpacing: 0.5, color: "#fff" }}>Vellora</span>
@@ -222,29 +490,61 @@ function LoginScreen({ onAuthed }) {
               </span>
             </div>
           </div>
-          <h1 style={{ fontFamily: fontVoice, fontSize: isMobile ? "26px" : "clamp(32px, 4.5vw, 52px)", lineHeight: 1.15, fontWeight: 500, margin: 0, maxWidth: 540, color: "#fff" }}>
+          <h1 className="login-fade-2" style={{ fontFamily: fontVoice, fontSize: isMobile ? "26px" : "clamp(32px, 4.5vw, 52px)", lineHeight: 1.15, fontWeight: 500, margin: 0, maxWidth: 540, color: "#fff" }}>
             Elevate your salon management experience.
           </h1>
-          <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 16, marginTop: 24, maxWidth: 460, lineHeight: 1.6 }}>
+          <p className="login-fade-3" style={{ color: "rgba(255,255,255,0.7)", fontSize: 16, marginTop: 24, maxWidth: 460, lineHeight: 1.6 }}>
             Seamlessly control appointments, inventory, and payroll from a single, beautifully designed dashboard—accessible anywhere, anytime.
           </p>
+          <div style={{ display: "flex", gap: 28, marginTop: 36, paddingTop: 28, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+            {[
+              ["500+", "Salons Managed"],
+              ["₹2Cr+", "Revenue Tracked"],
+              ["24/7", "Dashboard Access"]
+            ].map(([stat, label]) => (
+              <div key={label}>
+                <div style={{ fontFamily: fontVoice, fontSize: 20, fontWeight: 600, color: C.gold }}>{stat}</div>
+                <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.55)", marginTop: 4 }}>{label}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? "20px 16px 40px" : 24 }}>
-        <div style={{ width: "100%", maxWidth: 420 }}>
-          <div style={{ display: "flex", gap: 8, marginBottom: 24, background: "#F2ECE7", padding: 6, borderRadius: 14 }}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? "20px 16px 40px" : 24, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "-15%", right: "-15%", width: 480, height: 480, background: `radial-gradient(circle, rgba(232,160,160,0.35) 0%, rgba(232,160,160,0.08) 55%, rgba(0,0,0,0) 75%)`, borderRadius: "50%", pointerEvents: "none" }}></div>
+
+        <Scissors className="bg-icon-1" size={44} color={C.plum} style={{ position: "absolute", top: "16%", right: "12%", opacity: 0.1, pointerEvents: "none", transform: "rotate(-20deg)" }} />
+        <Scissors className="bg-icon-2" size={34} color={C.plum} style={{ position: "absolute", top: "40%", left: "6%", opacity: 0.08, pointerEvents: "none" }} />
+        <Scissors className="bg-icon-3" size={30} color={C.plum} style={{ position: "absolute", bottom: "12%", right: "8%", opacity: 0.08, pointerEvents: "none", transform: "rotate(150deg)" }} />
+        <Sparkles className="bg-icon-2" size={22} color={C.gold} style={{ position: "absolute", top: "26%", left: "20%", opacity: 0.5, pointerEvents: "none" }} />
+        <Sparkles className="bg-icon-3" size={18} color={C.gold} style={{ position: "absolute", bottom: "22%", left: "10%", opacity: 0.4, pointerEvents: "none" }} />
+
+        {[
+          { top: "8%", left: "10%", size: 6, color: "#E8A0A0" },
+          { top: "12%", right: "20%", size: 5, color: "#B8935F" },
+          { top: "58%", right: "6%", size: 7, color: "#E8A0A0" },
+          { top: "80%", left: "24%", size: 6, color: "#B8935F" },
+          { top: "34%", right: "34%", size: 4, color: "#9DA8D8" },
+          { top: "70%", left: "40%", size: 5, color: "#D8B8E8" },
+        ].map((d, i) => (
+          <div key={i} style={{ position: "absolute", top: d.top, left: d.left, right: d.right, width: d.size, height: d.size, borderRadius: "50%", background: d.color, opacity: 0.35, pointerEvents: "none" }} />
+        ))}
+
+        <div style={{ width: "100%", maxWidth: 420, position: "relative", zIndex: 1 }}>
+          <div className="tab-switcher" style={{ display: "flex", gap: 8, marginBottom: 24, background: "#F2ECE7", padding: 6, borderRadius: 14 }}>
             {[["login", "Sign In"], ["register", "Register Salon"]].map(([m, label]) => (
               <button key={m} onClick={() => { setMode(m); setError(""); }} style={{
                 flex: 1, padding: "10px 8px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13.5,
-                fontWeight: 600, fontFamily: fontSans, background: mode === m ? C.card : "transparent",
-                color: mode === m ? C.plum : C.sub, boxShadow: mode === m ? "0 4px 12px -4px rgba(43,27,46,0.15)" : "none",
-                transition: "all 0.2s ease"
+                fontWeight: 600, fontFamily: fontSans, background: "transparent",
+                color: mode === m ? C.plum : C.sub, position: "relative", zIndex: 1,
+                transition: "color 0.2s ease"
               }}>{label}</button>
             ))}
+            <div className="tab-indicator" style={{ left: mode === "login" ? 6 : "50%", width: "calc(50% - 6px)" }}></div>
           </div>
 
-          <form onSubmit={submit} style={{ width: "100%", background: C.card, borderRadius: 24, padding: "40px", border: `1px solid ${C.line}`, boxShadow: "0 24px 50px -20px rgba(43,27,46,0.08)" }}>
+          <form onSubmit={submit} className="form-card-enter" style={{ width: "100%", background: C.card, borderRadius: 24, padding: "40px", border: `1px solid ${C.line}`, boxShadow: "0 24px 50px -20px rgba(43,27,46,0.08)" }}>
             <h2 style={{ fontFamily: fontVoice, fontSize: 26, fontWeight: 600, color: C.ink, margin: "0 0 8px" }}>
               {mode === "register" ? "Create your account" : "Welcome back"}
             </h2>
@@ -268,17 +568,21 @@ function LoginScreen({ onAuthed }) {
                 </Field>
               </>
             )}
-            <Field label="Username">
-              <input className="vellora-input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter your username" style={inputStyle} />
-            </Field>
-            <Field label="Password">
-              <div style={{ position: "relative" }}>
-                <input className="vellora-input" type={showPw ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ ...inputStyle, paddingRight: 44 }} />
-                <button type="button" onClick={() => setShowPw((s) => !s)} style={{ position: "absolute", right: 12, top: 12, background: "none", border: "none", cursor: "pointer", color: C.sub, transition: "color 0.2s" }} onMouseOver={(e) => e.currentTarget.style.color = C.plum} onMouseOut={(e) => e.currentTarget.style.color = C.sub}>
-                  {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </Field>
+            <div className="field-fade-1">
+              <Field label="Username">
+                <input className="vellora-input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter your username" style={inputStyle} />
+              </Field>
+            </div>
+            <div className="field-fade-2">
+              <Field label="Password">
+                <div style={{ position: "relative" }}>
+                  <input className="vellora-input" type={showPw ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ ...inputStyle, paddingRight: 44 }} />
+                  <button type="button" onClick={() => setShowPw((s) => !s)} style={{ position: "absolute", right: 12, top: 12, background: "none", border: "none", cursor: "pointer", color: C.sub, transition: "color 0.2s" }} onMouseOver={(e) => e.currentTarget.style.color = C.plum} onMouseOut={(e) => e.currentTarget.style.color = C.sub}>
+                    {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </Field>
+            </div>
 
             {error && (
               <div style={{ padding: "12px 14px", backgroundColor: C.redBg, borderLeft: `4px solid ${C.red}`, borderRadius: 8, marginBottom: 20 }}>
@@ -286,10 +590,12 @@ function LoginScreen({ onAuthed }) {
               </div>
             )}
 
-            <button type="submit" disabled={busy} className="vellora-btn" style={{ ...primaryBtn, marginTop: 24, opacity: busy ? 0.8 : 1 }}>
-              {busy ? <Loader2 className="spinner" size={18} /> : null}
-              {busy ? "Authenticating..." : mode === "register" ? "Register Salon" : "Sign In"}
-            </button>
+            <div className="field-fade-3">
+              <button type="submit" disabled={busy} className="vellora-btn" style={{ ...primaryBtn, marginTop: 24, opacity: busy ? 0.8 : 1 }}>
+                {busy ? <Loader2 className="spinner" size={18} /> : null}
+                {busy ? "Authenticating..." : mode === "register" ? "Register Salon" : "Sign In"}
+              </button>
+            </div>
 
             {mode === "login" && (
               <p style={{ fontSize: 13, color: C.sub, marginTop: 24, textAlign: "center", lineHeight: 1.5 }}>
@@ -308,6 +614,9 @@ function LoginScreen({ onAuthed }) {
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "employee", "superadmin"] },
   { id: "appointments", label: "Appointments", icon: Calendar, roles: ["admin", "employee", "superadmin"] },
+  { id: "reports", label: "Reports", icon: TrendingUp, roles: ["admin", "superadmin"] },
+  { id: "customers", label: "Customers", icon: Users, roles: ["admin", "superadmin"] },
+  { id: "settings", label: "Payment Settings", icon: Wallet, roles: ["admin", "superadmin"] },
   { id: "marketing", label: "Marketing", icon: ImageIcon, roles: ["admin", "employee", "superadmin"] },
   { id: "accounts", label: "Accounts", icon: Wallet, roles: ["admin", "superadmin"] },
   { id: "team", label: "Team & Inventory", icon: Package, roles: ["admin", "superadmin"] },
@@ -326,6 +635,8 @@ export default function SalonManager() {
   const [inventory, setInventory] = useState([]);
   const [salaries, setSalaries] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [paymentSettings, setPaymentSettings] = useState({});
 
   const isMobile = useIsMobile();
   const touchStartX = useRef(null);
@@ -340,13 +651,15 @@ export default function SalonManager() {
     setLoadingData(true);
     setLoadError("");
     try {
-      const [a, i, s, e] = await Promise.all([
-        api.getAppointments(), api.getInventory(), api.getSalaries(), api.getEmployees(),
+      const [a, i, s, e, c, ps] = await Promise.all([
+        api.getAppointments(), api.getInventory(), api.getSalaries(), api.getEmployees(), api.getCustomers(), api.getSettings(),
       ]);
       setAppts(a.appointments || []);
       setInventory(i.inventory || []);
       setSalaries(s.salaries || []);
       setEmployees(e.employees || []);
+      setCustomers(c.customers || []);
+      setPaymentSettings(ps.settings || {});
     } catch (err) {
       setLoadError(err.message || "Failed to establish secure connection with the database.");
     } finally {
@@ -398,9 +711,12 @@ export default function SalonManager() {
 
   const SidebarContent = (
     <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "32px 24px 24px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 20px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ background: "rgba(184,147,95,0.15)", padding: 8, borderRadius: 10 }}>
+          <div style={{ background: "rgba(184,147,95,0.15)", padding: 8, borderRadius: 10, transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1)" }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = "rotate(-15deg) scale(1.1)"}
+            onMouseLeave={(e) => e.currentTarget.style.transform = "rotate(0) scale(1)"}
+          >
             <Scissors size={20} color={C.gold} />
           </div>
           <span style={{ fontFamily: fontVoice, fontSize: 22, fontWeight: 600, letterSpacing: 0.5 }}>Vellora</span>
@@ -409,7 +725,7 @@ export default function SalonManager() {
           <button onClick={() => setDrawerOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 24, cursor: "pointer", padding: 4 }}>✕</button>
         )}
       </div>
-      <nav style={{ flex: 1, padding: "8px 16px" }}>
+      <nav style={{ flex: 1, padding: "4px 12px" }}>
         {visibleNav.map((n) => {
           const Icon = n.icon;
           const active = tab === n.id;
@@ -419,22 +735,22 @@ export default function SalonManager() {
               className="nav-item"
               onClick={() => { setTab(n.id); setDrawerOpen(false); }}
               style={{
-                display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "14px 16px",
-                marginBottom: 6, borderRadius: 12, border: "none", cursor: "pointer", fontSize: 14.5,
-                fontFamily: fontSans, textAlign: "left", fontWeight: active ? 600 : 500,
-                background: active ? "rgba(184,147,95,0.15)" : "transparent",
-                color: active ? C.gold : "rgba(255,255,255,0.7)",
-                transition: "all 0.2s ease"
+                display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px",
+                marginBottom: 1, borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13.5,
+                fontFamily: fontSans, textAlign: "left", fontWeight: active ? 500 : 400,
+                background: active ? "rgba(184,147,95,0.1)" : "transparent",
+                color: active ? C.gold : "rgba(255,255,255,0.65)",
+                transition: "all 0.15s ease"
               }}
             >
-              <Icon size={18} /> {n.label}
+              <Icon size={16} /> {n.label}
             </button>
           );
         })}
       </nav>
-      <div style={{ padding: 24, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.gold, display: "flex", alignItems: "center", justifyContent: "center", color: C.plum, fontWeight: 600, fontSize: 14 }}>
+      <div style={{ padding: "16px 20px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: C.gold, display: "flex", alignItems: "center", justifyContent: "center", color: C.plum, fontWeight: 600, fontSize: 14 }}>
             {user.name.charAt(0).toUpperCase()}
           </div>
           <div>
@@ -442,15 +758,74 @@ export default function SalonManager() {
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>{user.salonName || (user.role === "superadmin" ? "System Administrator" : "Salon Administrator")}</div>
           </div>
         </div>
-        <button className="vellora-btn" onClick={handleLogout} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.9)", padding: "12px", borderRadius: 12, fontSize: 13.5, fontWeight: 500, cursor: "pointer", width: "100%", justifyContent: "center", transition: "all 0.2s ease" }}>
-          <LogOut size={15} /> Sign Out
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+
+          <button
+            className="vellora-btn"
+            onClick={() => {
+              setTab("general-settings");
+              setDrawerOpen(false);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: tab === "general-settings"
+                ? "rgba(184,147,95,0.15)"
+                : "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: tab === "general-settings"
+                ? C.gold
+                : "rgba(255,255,255,0.85)",
+              padding: "9px",
+              borderRadius: 10,
+              fontSize: 12.5,
+              fontWeight: 500,
+              cursor: "pointer",
+              width: "100%",
+              justifyContent: "center",
+              transition: "all 0.2s ease"
+            }}
+          >
+            <SettingsIcon size={14} /> Settings
+          </button>
+
+          <button
+            className="vellora-btn"
+            onClick={handleLogout}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "rgba(255,255,255,0.85)",
+              padding: "9px",
+              borderRadius: 10,
+              fontSize: 12.5,
+              fontWeight: 500,
+              cursor: "pointer",
+              width: "100%",
+              justifyContent: "center",
+              transition: "all 0.2s ease"
+            }}
+          >
+            <LogOut size={14} /> Sign Out
+          </button>
+
+        </div>
       </div>
     </>
   );
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: C.ivory, fontFamily: fontSans, color: C.ink }}>
+    <div style={{
+      minHeight: "100vh", display: "flex", fontFamily: fontSans, color: C.ink,
+      background: `
+        radial-gradient(circle at 1px 1px, rgba(184,147,95,0.15) 1px, transparent 0) 0 0/24px 24px,
+        ${C.ivory}
+      `
+    }}>
       <GlobalFonts />
 
       {!isMobile && (
@@ -467,9 +842,9 @@ export default function SalonManager() {
         </div>
       )}
 
-      <main onTouchStart={isMobile ? handleTouchStart : undefined} onTouchEnd={isMobile ? handleTouchEnd : undefined} style={{ flex: 1, padding: isMobile ? "20px 20px calc(90px + env(safe-area-inset-bottom))" : "40px 48px", overflowY: "auto", minWidth: 0, width: "100%" }}>
+            <main onTouchStart={isMobile ? handleTouchStart : undefined} onTouchEnd={isMobile ? handleTouchEnd : undefined} style={{ flex: 1, padding: isMobile ? "14px 12px calc(84px + env(safe-area-inset-bottom))" : "40px 48px", overflowY: "auto", minWidth: 0, width: "100%" }}>
         {isMobile && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, paddingBottom: 16, borderBottom: `1px solid ${C.line}` }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, padding: "env(safe-area-inset-top) 0 14px", borderBottom: `1px solid ${C.line}`, position: "sticky", top: 0, background: C.ivory, zIndex: 20 }}>
             <button onClick={() => setDrawerOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", color: C.ink, padding: 4 }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
@@ -478,6 +853,24 @@ export default function SalonManager() {
               <span style={{ fontFamily: fontVoice, fontSize: 18, fontWeight: 600 }}>Vellora</span>
             </div>
             <div style={{ width: 28 }} />
+          </div>
+        )}
+
+        {!isMobile && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, gap: 16 }}>
+            <SearchBar setTab={setTab} />
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button style={{ position: "relative", background: C.card, border: "none", borderRadius: "50%", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 1px 3px rgba(43,27,46,0.08)" }}>
+                <Bell size={16} color={C.ink} />
+                <span style={{ position: "absolute", top: 8, right: 9, width: 6, height: 6, borderRadius: "50%", background: C.gold }} />
+              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.card, borderRadius: 999, padding: "5px 14px 5px 5px", boxShadow: "0 1px 3px rgba(43,27,46,0.08)" }}>
+                <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.gold, display: "flex", alignItems: "center", justifyContent: "center", color: C.plum, fontWeight: 700, fontSize: 12 }}>
+                  {user.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: C.ink }}>{user.name.split(" ")[0]}</span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -494,23 +887,29 @@ export default function SalonManager() {
           </div>
         )}
 
-        {tab === "dashboard" && <Dashboard appts={appts} inventory={inventory} employees={employees} isMobile={isMobile} />}
-        {tab === "appointments" && <Appointments appts={appts} setAppts={setAppts} setLoadError={setLoadError} isMobile={isMobile} salonName={user.salonName || "our salon"} />}
-        {tab === "marketing" && <Marketing user={user} isMobile={isMobile} />}
-        {tab === "accounts" && <Accounts salaries={salaries} setSalaries={setSalaries} employees={employees} setLoadError={setLoadError} isMobile={isMobile} />}
-        {tab === "team" && <Team employees={employees} setEmployees={setEmployees} inventory={inventory} setInventory={setInventory} setLoadError={setLoadError} isMobile={isMobile} />}
-        {tab === "superadmin" && <SuperAdminPanel token={session.token} />}
+        <div key={tab} style={{ animation: "fadeIn 0.22s ease-out" }}>
+          {tab === "dashboard" && <Dashboard appts={appts} inventory={inventory} employees={employees} isMobile={isMobile} setTab={setTab} />}
+          {tab === "appointments" && <Appointments appts={appts} setAppts={setAppts} setLoadError={setLoadError} isMobile={isMobile} salonName={user.salonName || "our salon"} paymentSettings={paymentSettings} />}
+          {tab === "reports" && <Reports setLoadError={setLoadError} />}
+          {tab === "customers" && <Customers setLoadError={setLoadError} isMobile={isMobile} />}
+          {tab === "settings" && <PaymentSettings settings={paymentSettings} setPaymentSettings={setPaymentSettings} setLoadError={setLoadError} isMobile={isMobile} />}
+          {tab === "general-settings" && <Settings isMobile={isMobile} />}
+          {tab === "marketing" && <Marketing user={user} isMobile={isMobile} />}
+          {tab === "accounts" && <Accounts salaries={salaries} setSalaries={setSalaries} employees={employees} setLoadError={setLoadError} isMobile={isMobile} />}
+          {tab === "team" && <Team employees={employees} setEmployees={setEmployees} inventory={inventory} setInventory={setInventory} setLoadError={setLoadError} isMobile={isMobile} />}
+          {tab === "superadmin" && <SuperAdminPanel token={session.token} />}
+        </div>
       </main>
 
       {isMobile && (
-        <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(10px)", borderTop: `1px solid ${C.line}`, display: "flex", justifyContent: "space-around", padding: "12px 8px env(safe-area-inset-bottom)", zIndex: 30, boxShadow: "0 -8px 24px rgba(0,0,0,0.04)" }}>
+        <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, minHeight: 64, background: "rgba(255,255,255,0.92)", backdropFilter: "blur(10px)", borderTop: `1px solid ${C.line}`, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 6px calc(8px + env(safe-area-inset-bottom))", zIndex: 30, boxShadow: "0 -8px 24px rgba(0,0,0,0.04)" }}>
           {visibleNav.slice(0, 5).map((n) => {
             const Icon = n.icon;
             const active = tab === n.id;
             return (
-              <button key={n.id} onClick={() => setTab(n.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: active ? C.plum : C.sub, padding: "4px 8px", transition: "all 0.2s" }}>
-                <Icon size={22} color={active ? C.plum : C.sub} />
-                <span style={{ fontSize: 11, fontWeight: active ? 600 : 500 }}>{n.label.split(" ")[0]}</span>
+              <button key={n.id} onClick={() => setTab(n.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flex: 1, minWidth: 0, background: active ? "rgba(184,147,95,0.12)" : "none", border: "none", borderRadius: 12, cursor: "pointer", color: active ? C.plum : C.sub, padding: "5px 2px", transition: "all 0.2s" }}>
+                <Icon size={19} color={active ? C.plum : C.sub} />
+                <span style={{ fontSize: 9.5, fontWeight: active ? 600 : 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{n.label.split(" ")[0]}</span>
               </button>
             );
           })}
@@ -520,8 +919,7 @@ export default function SalonManager() {
   );
 }
 
-/* ================= DASHBOARD ================= */
-function Dashboard({ appts, inventory, employees, isMobile }) {
+function Dashboard({ appts, inventory, employees, isMobile, setTab }) {
   const today = todayISO();
   const todayCount = appts.filter((a) => a.date?.slice(0, 10) === today).length;
   const monthRevenue = appts
@@ -530,57 +928,235 @@ function Dashboard({ appts, inventory, employees, isMobile }) {
   const lowStock = inventory.filter((i) => Number(i.qty) <= Number(i.reorder_level || 0));
 
   const stats = [
-    { label: "Today's Appointments", value: todayCount, icon: Calendar },
-    { label: "Monthly Revenue", value: money(monthRevenue), icon: Wallet },
-    { label: "Active Staff", value: employees.length, icon: Users },
-    { label: "Items Low in Stock", value: lowStock.length, icon: Package },
+    { label: "Today's Appointments", value: todayCount, icon: Calendar, target: "appointments", iconBg: "#8B5CF6" },
+    { label: "Monthly Revenue", value: money(monthRevenue), icon: Wallet, target: "accounts", iconBg: "#F59E0B" },
+    { label: "Active Staff", value: employees.length, icon: Users, target: "team", iconBg: "#10B981" },
+    { label: "Items Low in Stock", value: lowStock.length, icon: Package, target: "team", iconBg: "#EC4899" },
   ];
 
+  const upcoming = appts.filter((a) => a.date >= today).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
+
+  // Revenue This Week — last 7 days including today
+  const weekDays = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toISOString().slice(0, 10);
+  });
+  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const weekRevenue = weekDays.map((dateStr) => {
+    const total = appts
+      .filter((a) => a.date === dateStr && a.status === "payment done")
+      .reduce((s, a) => s + Number(a.price || 0), 0);
+    const dow = new Date(dateStr + "T00:00:00").getDay();
+    return { date: dateStr, label: dayLabels[dow], revenue: total };
+  });
+  const weekTotal = weekRevenue.reduce((s, d) => s + d.revenue, 0);
+  const weekMax = Math.max(...weekRevenue.map((d) => d.revenue), 1);
+
+  // Top Services — computed from paid appointments
+  const serviceMap = {};
+  appts.filter((a) => a.status === "payment done").forEach((a) => {
+    const key = a.service || "Other";
+    if (!serviceMap[key]) serviceMap[key] = { bookings: 0, revenue: 0 };
+    serviceMap[key].bookings += 1;
+    serviceMap[key].revenue += Number(a.price || 0);
+  });
+  const topServices = Object.entries(serviceMap)
+    .map(([name, v]) => ({ name, ...v }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 4);
+
+    // Previous week ka data — % change ke liye
+  const prevWeekDays = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (13 - i));
+    return d.toISOString().slice(0, 10);
+  });
+  const prevWeekTotal = appts
+    .filter((a) => prevWeekDays.includes(a.date) && a.status === "payment done")
+    .reduce((s, a) => s + Number(a.price || 0), 0);
+  const weekChangePct = prevWeekTotal > 0 ? Math.round(((weekTotal - prevWeekTotal) / prevWeekTotal) * 100) : (weekTotal > 0 ? 100 : 0);
+
+  // Top services ke liye previous-period comparison
+  const prevServiceMap = {};
+  appts.filter((a) => prevWeekDays.includes(a.date) && a.status === "payment done").forEach((a) => {
+    const key = a.service || "Other";
+    prevServiceMap[key] = (prevServiceMap[key] || 0) + Number(a.price || 0);
+  });
+  const topServicesWithChange = topServices.map((s) => {
+    const prevRev = prevServiceMap[s.name] || 0;
+    const changePct = prevRev > 0 ? Math.round(((s.revenue - prevRev) / prevRev) * 100) : (s.revenue > 0 ? 100 : 0);
+    return { ...s, changePct };
+  });
+
   return (
-    <div style={{ animation: "fadeIn 0.4s ease-out" }}>
+    <div style={{ position: "relative" }}>
       <PageHeader title="Dashboard Overview" sub="A comprehensive look at your salon's performance today." />
-      
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(auto-fit,minmax(200px,1fr))", gap: 16, marginBottom: 32 }}>
-        {stats.map((s) => {
+
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(auto-fit,minmax(200px,1fr))", gap: isMobile ? 10 : 16, marginBottom: isMobile ? 20 : 32 }}>
+        {stats.map((s, idx) => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className="vellora-card" style={{ ...card, padding: "24px 20px" }}>
-              <div style={{ width: 42, height: 42, borderRadius: 12, background: C.goldLight, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                <Icon size={20} color={C.gold} />
+            <div
+              key={s.label}
+              className="vellora-card pop-in"
+              onClick={() => setTab && setTab(s.target)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter" && setTab) setTab(s.target); }}
+              style={{ ...card, padding: isMobile ? "14px 12px" : "24px 20px", cursor: setTab ? "pointer" : "default", animationDelay: `${idx * 0.08}s` }}
+            >
+              <div style={{ width: isMobile ? 32 : 42, height: isMobile ? 32 : 42, borderRadius: isMobile ? 9 : 12, background: s.iconBg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: isMobile ? 10 : 16 }}>
+                <Icon size={isMobile ? 15 : 20} color="#fff" />
               </div>
-              <div style={{ fontSize: 28, fontWeight: 600, fontFamily: fontVoice, color: C.ink }}>{s.value}</div>
-              <div style={{ fontSize: 13.5, color: C.sub, marginTop: 6, fontWeight: 500 }}>{s.label}</div>
+              <div style={{ fontSize: isMobile ? 18 : 28, fontWeight: 600, fontFamily: fontVoice, color: C.ink }}>{s.value}</div>
+              <div style={{ fontSize: isMobile ? 11.5 : 13.5, color: C.sub, marginTop: isMobile ? 3 : 6, fontWeight: 500 }}>{s.label}</div>
             </div>
           );
         })}
       </div>
-      
-      <div className="vellora-card" style={card}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.ink }}>Upcoming Schedule</h3>
+
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr", gap: 20, alignItems: "start", marginBottom: 20 }}>
+        <div className="vellora-card" style={card}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.ink }}>Revenue This Week</h3>
+              <p style={{ margin: "4px 0 0", fontSize: 12.5, color: C.sub }}>Daily earnings overview</p>
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 20, background: weekChangePct >= 0 ? C.greenBg : C.redBg, color: weekChangePct >= 0 ? C.green : C.red, display: "flex", alignItems: "center", gap: 4 }}>
+              {weekChangePct >= 0 ? "↗" : "↘"} {Math.abs(weekChangePct)}% vs last week
+            </span>
+          </div>
+          <svg viewBox="0 0 500 180" style={{ width: "100%", height: 180, marginTop: 16, overflow: "visible" }}>
+            {(() => {
+              const w = 500, h = 180, pad = 24;
+              const step = (w - pad * 2) / (weekRevenue.length - 1);
+              const points = weekRevenue.map((d, i) => {
+                const x = pad + i * step;
+                const y = h - pad - (d.revenue / weekMax) * (h - pad * 2);
+                return { x, y, d };
+              });
+              const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+              const areaPath = `${linePath} L ${points[points.length - 1].x} ${h - pad} L ${points[0].x} ${h - pad} Z`;
+              return (
+                <>
+                  <defs>
+                    <linearGradient id="revFillGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={C.gold} stopOpacity="0.35" />
+                      <stop offset="100%" stopColor={C.gold} stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path d={areaPath} fill="url(#revFillGrad)" />
+                  <path d={linePath} fill="none" stroke={C.gold} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  {points.map((p, i) => (
+                    <g key={i}>
+                      <circle cx={p.x} cy={p.y} r={p.d.date === today ? 5 : 3.5} fill={p.d.date === today ? C.gold : C.card} stroke={C.gold} strokeWidth="2" />
+                      <text x={p.x} y={h - 4} textAnchor="middle" fontSize="10.5" fill={C.sub} fontWeight="500">{p.d.label}</text>
+                    </g>
+                  ))}
+                </>
+              );
+            })()}
+          </svg>
         </div>
-        
-        {appts.filter((a) => a.date >= today).slice(0, 5).length === 0 ? (
-          <div style={{ padding: "32px 0", textAlign: "center", background: "#FCFAF8", borderRadius: 12, border: `1px dashed ${C.line}` }}>
-            <Calendar size={24} color={C.sub} style={{ marginBottom: 12 }} />
-            <p style={{ color: C.sub, fontSize: 14, margin: 0 }}>No upcoming appointments scheduled.</p>
+
+        <div className="vellora-card" style={card}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.ink }}>Top Services</h3>
+            <button onClick={() => setTab && setTab("reports")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 600, color: C.gold }}>View all ›</button>
           </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {appts.filter((a) => a.date >= today).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5).map((a, i) => (
-              <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderTop: i === 0 ? "none" : `1px solid ${C.line}` }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{a.client}</div>
-                  <div style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>{a.service}</div>
+          {topServices.length === 0 ? (
+            <p style={{ color: C.sub, fontSize: 13 }}>No paid appointments yet.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {topServices.map((s, i) => (
+                <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: C.goldLight, color: C.plum, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+                    {i + 1}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: C.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+                    <div style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>{s.bookings} booking{s.bookings !== 1 ? "s" : ""} · {money(s.revenue)}</div>
+                  </div>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: s.changePct >= 0 ? C.green : C.red, whiteSpace: "nowrap" }}>
+                    {s.changePct >= 0 ? "↗" : "↘"} {Math.abs(s.changePct)}%
+                  </span>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontWeight: 500, fontSize: 14, color: C.ink }}>{a.time}</div>
-                  <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>{a.date}</div>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr", gap: 20, alignItems: "start" }}>
+        <div className="vellora-card" style={card}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.ink }}>Upcoming Schedule</h3>
+            <span style={{ fontSize: 12.5, color: C.sub }}>{upcoming.length} appointments</span>
           </div>
-        )}
+
+          {upcoming.length === 0 ? (
+            <div style={{ padding: "32px 0", textAlign: "center", background: "#FCFAF8", borderRadius: 12, border: `1px dashed ${C.line}` }}>
+              <Calendar size={24} color={C.sub} style={{ marginBottom: 12 }} />
+              <p style={{ color: C.sub, fontSize: 14, margin: 0 }}>No upcoming appointments scheduled.</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {upcoming.map((a, i) => (
+                <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderTop: i === 0 ? "none" : `1px solid ${C.line}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.goldLight, color: C.plum, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: 13 }}>
+                      {a.client?.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{a.client}</div>
+                      <div style={{ fontSize: 13, color: C.sub, marginTop: 2 }}>{a.service}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 500, fontSize: 13.5, color: C.ink }}>{a.time}</div>
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 20, backgroundColor: getStatusBadge(a.status).bg, color: getStatusBadge(a.status).text }}>
+                      {a.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div className="vellora-card" style={card}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: C.ink }}>Quick Actions</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {[
+                ["Book Appt", Calendar, "appointments"],
+                ["Add Client", Users, "customers"],
+                ["Inventory", Package, "team"],
+                ["Reports", TrendingUp, "reports"],
+              ].map(([label, Icon, target]) => (
+                <button
+                  key={label}
+                  onClick={() => setTab && setTab(target)}
+                  className="vellora-icon-btn"
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "16px 8px", borderRadius: 12, border: `1px solid ${C.line}`, background: "#FCFAF8", cursor: "pointer" }}
+                >
+                  <Icon size={18} color={C.gold} />
+                  <span style={{ fontSize: 12, fontWeight: 500, color: C.ink }}>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="vellora-card" style={{ ...card, background: `linear-gradient(160deg, ${C.plum} 0%, #1A101C 100%)`, color: "#fff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>Salon Rating</span>
+              <span style={{ color: C.gold }}>★</span>
+            </div>
+            <div style={{ fontFamily: fontVoice, fontSize: 32, fontWeight: 600 }}>4.8</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Based on customer feedback</div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -599,9 +1175,10 @@ const getStatusBadge = (status) => {
   return styles[status] || styles["not visited"];
 };
 
-function Appointments({ appts, setAppts, setLoadError, isMobile, salonName }) {
+function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paymentSettings }) {
   const [showForm, setShowForm] = useState(false);
   const [filterDate, setFilterDate] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ client: "", phone: "", service: "", date: todayISO(), time: "10:00", employee: "", price: "" });
 
@@ -620,11 +1197,37 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName }) {
     }
   };
 
+  const celebrate = () => {
+    const colors = [C.gold, C.plum, "#3A7D44", "#D33535"];
+    for (let i = 0; i < 24; i++) {
+      const piece = document.createElement("div");
+      const size = 6 + Math.random() * 6;
+      piece.style.cssText = `
+        position:fixed; top:40%; left:${45 + Math.random() * 10}%;
+        width:${size}px; height:${size}px;
+        background:${colors[i % colors.length]};
+        border-radius:${Math.random() > 0.5 ? "50%" : "2px"};
+        z-index:300; pointer-events:none;
+        animation: confettiFall ${1 + Math.random() * 0.6}s ease-in forwards;
+        animation-delay:${Math.random() * 0.2}s;
+      `;
+      document.body.appendChild(piece);
+      setTimeout(() => piece.remove(), 2000);
+    }
+    const toast = document.createElement("div");
+    toast.textContent = "💰 Payment recorded!";
+    toast.style.cssText = `position:fixed;bottom:24px;right:24px;background:${C.plum};color:#fff;padding:12px 20px;border-radius:12px;font-family:${fontSans};font-size:14px;font-weight:500;z-index:301;box-shadow:0 8px 24px rgba(0,0,0,0.25);animation:bounceIn 0.4s cubic-bezier(0.34,1.56,0.64,1)`;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.transition = "opacity 0.3s"; toast.style.opacity = "0"; }, 1500);
+    setTimeout(() => toast.remove(), 1900);
+  };
+
   const setStatus = async (id, status) => {
     const prev = appts;
     setAppts(appts.map((a) => (a.id === id ? { ...a, status } : a)));
     try {
       await api.updateAppointmentStatus(id, status);
+      if (status === "payment done") celebrate();
     } catch (err) {
       setAppts(prev);
       setLoadError("Failed to update status. " + err.message);
@@ -643,9 +1246,8 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName }) {
   };
 
   const getWhatsAppLink = (appt, salonName) => {
-  if (!appt.phone) return null;
-  
-  const message = `Hey ${appt.client}!
+    if (!appt.phone) return null;
+    const message = `Hey ${appt.client}!
 
   Just confirming - you're all booked in at *${salonName}*!
 
@@ -657,11 +1259,26 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName }) {
 
   See you soon,
   ${salonName}`;
+    const cleanPhone = appt.phone.replace(/\D/g, '');
+    const phoneWithCountryCode = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+    return `https://wa.me/${phoneWithCountryCode}?text=${encodeURIComponent(message)}`;
+  };
 
-  const cleanPhone = appt.phone.replace(/\D/g, '');
-  const phoneWithCountryCode = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
-  return `https://wa.me/${phoneWithCountryCode}?text=${encodeURIComponent(message)}`;
-};
+  const [collectPaymentAppt, setCollectPaymentAppt] = useState(null);
+  const [openMenuId, setOpenMenuId] = useState(null);
+
+  const STATUS_TABS = [
+    ["all", "All"],
+    ["not visited", "Not Visited"],
+    ["visited", "Visited"],
+    ["payment pending", "Pending"],
+    ["payment done", "Completed"],
+  ];
+
+  const filtered = [...appts]
+    .filter((a) => !filterDate || a.date === filterDate)
+    .filter((a) => filterStatus === "all" || a.status === filterStatus)
+    .sort((a, b) => b.date.localeCompare(a.date) || (a.time || "").localeCompare(b.time || ""));
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
@@ -669,23 +1286,6 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName }) {
         action={<button className="vellora-btn-ghost" style={btnGhost} onClick={() => setShowForm((s) => !s)}>
           {showForm ? "Cancel" : <><Plus size={16} /> New Booking</>}
         </button>} />
-
-      <div style={{ ...card, marginBottom: 20, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", padding: "16px 20px" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-    <label style={{ fontSize: 13, fontWeight: 500, color: C.sub }}>View by date:</label>
-    <input type="date" className="vellora-input" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} style={{ ...inputStyle, width: "auto" }} />
-  </div>
-  {filterDate && (
-    <>
-      <span style={{ fontSize: 14, fontWeight: 600, color: C.plum }}>
-        {appts.filter((a) => a.date === filterDate).length} appointment{appts.filter((a) => a.date === filterDate).length !== 1 ? "s" : ""} on this day
-      </span>
-      <button onClick={() => setFilterDate("")} style={{ background: "none", border: "none", color: C.sub, fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
-        Clear filter
-      </button>
-    </>
-  )}
-</div>
 
       {showForm && (
         <div className="vellora-card" style={{ ...card, marginBottom: 24, background: "#FDFBF9", border: `1px solid ${C.goldLight}` }}>
@@ -700,63 +1300,218 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName }) {
             <input className="vellora-input" placeholder="Estimated Price (₹)" type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} style={inputStyle} />
           </div>
           <button className="vellora-btn-ghost" style={{ ...btnGhost, marginTop: 20, opacity: saving ? 0.7 : 1, width: isMobile ? "100%" : "auto" }} onClick={add} disabled={saving}>
-            {saving ? <Loader2 className="spinner" size={16} /> : <Check size={16} />} 
+            {saving ? <Loader2 className="spinner" size={16} /> : <Check size={16} />}
             {saving ? "Confirming..." : "Confirm Booking"}
           </button>
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {appts.length === 0 && (
-          <div style={{ padding: "32px 24px", textAlign: "center", background: "#FCFAF8", borderRadius: 16, border: `1px dashed ${C.line}` }}>
-  <div style={{ width: 48, height: 48, borderRadius: 12, background: C.goldLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-    <Calendar size={22} color={C.gold} />
-  </div>
-  <h3 style={{ margin: "0 0 4px", fontSize: 14.5, fontWeight: 600, color: C.ink }}>No appointments found</h3>
-  <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>Your schedule is currently empty.</p>
-</div>
-        )}
-        {[...appts]
-        .filter((a) => !filterDate || a.date === filterDate)
-        .sort((a, b) => b.date.localeCompare(a.date))
-        .map((a) => {
-          const badge = getStatusBadge(a.status);
-          return (
-            <div key={a.id} className="vellora-card" style={{ ...card, padding: isMobile ? "16px" : "20px 24px", display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", gap: 16 }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-                  <span style={{ fontWeight: 600, fontSize: 16, color: C.ink }}>{a.client}</span>
-                  <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, padding: "4px 10px", borderRadius: 20, backgroundColor: badge.bg, color: badge.text }}>
-                    {a.status}
-                  </span>
-                </div>
-                <div style={{ fontWeight: 500, fontSize: 14, color: C.plum, marginBottom: 4 }}>{a.service}</div>
-                <div style={{ fontSize: 13, color: C.sub, display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                  <span><Calendar size={12} style={{display:"inline", verticalAlign:"-1px", marginRight:4}}/>{a.date} at {a.time}</span>
-                  {a.phone && <span>· {a.phone}</span>}
-                  {a.employee && <span>· Staff: {a.employee}</span>}
-                  {a.price && <span style={{ fontWeight: 600, color: C.ink }}>· {money(a.price)}</span>}
-                </div>
-              </div>
-              
-              <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: isMobile ? "space-between" : "flex-end", marginTop: isMobile ? 8 : 0, paddingTop: isMobile ? 12 : 0, borderTop: isMobile ? `1px solid ${C.line}` : "none" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: C.sub, textTransform: "uppercase" }}>Update Status</label>
-                  <select className="vellora-input" value={a.status} onChange={(e) => setStatus(a.id, e.target.value)} style={{ ...inputStyle, padding: "8px 32px 8px 12px", fontSize: 13, fontWeight: 500, width: "auto", minWidth: 140, cursor: "pointer", appearance: "none", backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B6070%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 12px top 50%", backgroundSize: "10px auto" }}>
-                    {APPT_STATUS.map((s) => <option key={s} value={s}>{s.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
-                  </select>
-                </div>
-                {getWhatsAppLink(a, salonName) && (
-                  <a href={getWhatsAppLink(a, salonName)} target="_blank" rel="noopener noreferrer" className="vellora-icon-btn" style={{ ...iconBtn, marginTop: 18, color: "#25D366" }} title="Send WhatsApp Confirmation">
-                    <MessageCircle size={18} />
-                  </a>
-                )}
-                 <button className="vellora-icon-btn" style={{...iconBtn, marginTop: 18}} onClick={() => remove(a.id)} title="Delete Appointment"><Trash2 size={18} /></button>
-              </div>
+      <div className="vellora-card" style={{ ...card, padding: 0, overflow: "hidden" }}>
+        {/* Filter tabs + date picker row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, padding: isMobile ? "16px" : "18px 20px", borderBottom: `1px solid ${C.line}` }}>
+          <div style={{ display: "flex", gap: 6, background: "#F2ECE7", padding: 4, borderRadius: 12, flexWrap: "wrap" }}>
+            {STATUS_TABS.map(([val, label]) => (
+              <button key={val} onClick={() => setFilterStatus(val)} style={{
+                padding: "7px 14px", borderRadius: 9, border: "none", cursor: "pointer", fontSize: 12.5,
+                fontWeight: 600, fontFamily: fontSans, background: filterStatus === val ? C.card : "transparent",
+                color: filterStatus === val ? C.plum : C.sub, boxShadow: filterStatus === val ? "0 2px 8px -3px rgba(43,27,46,0.2)" : "none",
+                transition: "all 0.2s ease", whiteSpace: "nowrap"
+              }}>{label}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <input type="date" className="vellora-input" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} style={{ ...inputStyle, width: "auto", padding: "8px 12px" }} />
+            {filterDate && (
+              <button onClick={() => setFilterDate("")} style={{ background: "none", border: "none", color: C.sub, fontSize: 12.5, cursor: "pointer", textDecoration: "underline" }}>Clear</button>
+            )}
+          </div>
+        </div>
+
+        {filtered.length === 0 ? (
+          <div style={{ padding: "48px 24px", textAlign: "center" }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: C.goldLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+              <Calendar size={22} color={C.gold} />
             </div>
-          );
-        })}
+            <h3 style={{ margin: "0 0 4px", fontSize: 14.5, fontWeight: 600, color: C.ink }}>No appointments found</h3>
+            <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>Try a different filter or add a new booking.</p>
+          </div>
+        ) : isMobile ? (
+          // Mobile: stacked cards instead of a table
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {filtered.map((a, i) => {
+              const badge = getStatusBadge(a.status);
+              return (
+                <div key={a.id} style={{ padding: "16px", borderTop: i === 0 ? "none" : `1px solid ${C.line}`, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.goldLight, color: C.plum, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13 }}>
+                        {a.client?.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{a.client}</div>
+                        <div style={{ fontSize: 12.5, color: C.sub, marginTop: 1 }}>{a.service}</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", padding: "3px 9px", borderRadius: 20, backgroundColor: badge.bg, color: badge.text }}>{a.status}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, color: C.sub }}>
+                    <span>{a.date} · {a.time}</span>
+                    <span style={{ fontWeight: 700, color: C.ink, fontSize: 14 }}>{a.price ? money(a.price) : "—"}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    <select className="vellora-input" value={a.status} onChange={(e) => setStatus(a.id, e.target.value)} style={{ ...inputStyle, flex: 1, padding: "7px 10px", fontSize: 12.5 }}>
+                      {APPT_STATUS.map((s) => <option key={s} value={s}>{s.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
+                    </select>
+                    {getWhatsAppLink(a, salonName) && (
+                      <a href={getWhatsAppLink(a, salonName)} target="_blank" rel="noopener noreferrer" className="vellora-icon-btn" style={{ ...iconBtn, color: "#25D366" }}><MessageCircle size={17} /></a>
+                    )}
+                    {(paymentSettings?.qr_image_url || paymentSettings?.upi_id) && (
+                      <button className="vellora-icon-btn" style={{ ...iconBtn, color: C.gold }} onClick={() => setCollectPaymentAppt(a)}><Wallet size={17} /></button>
+                    )}
+                    <button className="vellora-icon-btn" style={iconBtn} onClick={() => remove(a.id)}><Trash2 size={17} /></button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          // Desktop: table
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#FCFAF8" }}>
+                  {["CLIENT", "SERVICE", "TIME", "STATUS", "AMOUNT", ""].map((h) => (
+                    <th key={h} style={{ textAlign: "left", padding: "12px 20px", fontSize: 11, fontWeight: 700, letterSpacing: 0.6, color: C.sub, borderBottom: `1px solid ${C.line}` }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((a) => {
+                  const badge = getStatusBadge(a.status);
+                  const cancelled = a.status === "cancelled";
+                  return (
+                    <tr key={a.id} style={{ borderBottom: `1px solid ${C.line}` }}>
+                      <td style={{ padding: "16px 20px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.goldLight, color: C.plum, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>
+                            {a.client?.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13.5, color: C.ink }}>{a.client}</div>
+                            {a.phone && <div style={{ fontSize: 11.5, color: C.sub, marginTop: 1 }}>{a.phone}</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: "16px 20px" }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: C.ink }}>{a.service}</div>
+                        {a.employee && <div style={{ fontSize: 11.5, color: C.gold, marginTop: 2, fontWeight: 500 }}>{a.employee}</div>}
+                      </td>
+                      <td style={{ padding: "16px 20px" }}>
+                        <span style={{ fontSize: 13, color: C.ink, display: "flex", alignItems: "center", gap: 6 }}>
+                          <Calendar size={12} color={C.sub} /> {a.time}
+                        </span>
+                        <div style={{ fontSize: 11.5, color: C.sub, marginTop: 2 }}>{a.date}</div>
+                      </td>
+                      <td style={{ padding: "16px 20px" }}>
+                        <select className="vellora-input" value={a.status} onChange={(e) => setStatus(a.id, e.target.value)} style={{
+                          padding: "5px 26px 5px 10px", fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3,
+                          borderRadius: 20, border: "none", cursor: "pointer", appearance: "none",
+                          backgroundColor: badge.bg, color: badge.text,
+                          backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B6070%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")`,
+                          backgroundRepeat: "no-repeat", backgroundPosition: "right 8px top 50%", backgroundSize: "8px auto"
+                        }}>
+                          {APPT_STATUS.map((s) => <option key={s} value={s}>{s.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
+                        </select>
+                      </td>
+                      <td style={{ padding: "16px 20px" }}>
+                        <span style={{ fontSize: 14.5, fontWeight: 700, color: cancelled ? C.sub : C.ink, textDecoration: cancelled ? "line-through" : "none" }}>
+                          {a.price ? money(a.price) : "—"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "16px 20px", position: "relative" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
+                          {getWhatsAppLink(a, salonName) && (
+                            <a href={getWhatsAppLink(a, salonName)} target="_blank" rel="noopener noreferrer" className="vellora-icon-btn" style={{ ...iconBtn, color: "#25D366" }} title="WhatsApp"><MessageCircle size={16} /></a>
+                          )}
+                          {(paymentSettings?.qr_image_url || paymentSettings?.upi_id) && (
+                            <button className="vellora-icon-btn" style={{ ...iconBtn, color: C.gold }} title="Collect Payment" onClick={() => setCollectPaymentAppt(a)}><Wallet size={16} /></button>
+                          )}
+                          <button className="vellora-icon-btn" style={iconBtn} title="Delete" onClick={() => remove(a.id)}><Trash2 size={16} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div style={{ padding: "14px 20px", fontSize: 12.5, color: C.sub, borderTop: `1px solid ${C.line}` }}>
+          Showing {filtered.length} of {appts.length} appointments
+        </div>
       </div>
+
+      {collectPaymentAppt && (
+        <div onClick={() => setCollectPaymentAppt(null)} style={{ position: "fixed", inset: 0, background: "rgba(26,18,28,0.65)", backdropFilter: "blur(2px)", zIndex: 100, display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? 0 : 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            ...card,
+            width: "100%",
+            maxWidth: isMobile ? "100%" : 380,
+            position: "relative",
+            textAlign: "center",
+            borderRadius: isMobile ? "28px 28px 0 0" : 22,
+            padding: isMobile ? "16px 24px calc(28px + env(safe-area-inset-bottom))" : "32px",
+            overflow: "hidden"
+          }}>
+            {/* Decorative top accent */}
+            <div style={{
+              position: "absolute", top: 0, left: 0, right: 0, height: 90,
+              background: `linear-gradient(160deg, ${C.plum} 0%, #1A101C 100%)`,
+              zIndex: 0
+            }} />
+
+            {isMobile && (
+              <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.4)", borderRadius: 4, margin: "0 auto 20px", position: "relative", zIndex: 1 }} />
+            )}
+            <button onClick={() => setCollectPaymentAppt(null)} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}>×</button>
+
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div style={{ width: 52, height: 52, borderRadius: "50%", background: C.gold, color: C.plum, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 20, margin: isMobile ? "8px auto 12px" : "0 auto 12px", border: "3px solid #fff", boxShadow: "0 6px 16px rgba(0,0,0,0.2)" }}>
+                {collectPaymentAppt.client?.charAt(0).toUpperCase()}
+              </div>
+              <h3 style={{ fontFamily: fontVoice, fontSize: 19, fontWeight: 600, margin: "0 0 2px", color: "#fff" }}>{collectPaymentAppt.client}</h3>
+              <p style={{ color: "rgba(255,255,255,0.75)", fontSize: 13, margin: 0 }}>{collectPaymentAppt.service}</p>
+            </div>
+
+            <div style={{ marginTop: 20 }}>
+              {collectPaymentAppt.price && (
+                <div style={{ marginBottom: 20 }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: C.sub, margin: "0 0 4px" }}>Amount Due</p>
+                  <p style={{ fontSize: 32, fontWeight: 700, color: C.plum, fontFamily: fontVoice, margin: 0 }}>{money(collectPaymentAppt.price)}</p>
+                </div>
+              )}
+
+              {paymentSettings?.qr_image_url ? (
+                <div style={{ background: "#FCFAF8", border: `1.5px solid ${C.line}`, borderRadius: 18, padding: 18, display: "inline-block" }}>
+                  <img src={paymentSettings.qr_image_url} alt="Payment QR" style={{ width: 190, height: 190, objectFit: "contain", borderRadius: 10, background: "#fff" }} />
+                </div>
+              ) : paymentSettings?.upi_id ? (
+                <div style={{ padding: "20px", background: `linear-gradient(160deg, ${C.goldBg} 0%, #FDFBF9 100%)`, borderRadius: 16, border: `1.5px dashed ${C.gold}` }}>
+                  <Wallet size={22} color={C.gold} style={{ marginBottom: 8 }} />
+                  <p style={{ fontSize: 11, color: C.sub, margin: "0 0 6px", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>UPI ID</p>
+                  <p style={{ fontSize: 17, fontWeight: 700, color: C.ink, margin: 0, wordBreak: "break-all" }}>{paymentSettings.upi_id}</p>
+                </div>
+              ) : null}
+
+              <p style={{ fontSize: 12, color: C.sub, marginTop: 18, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.green, display: "inline-block", flexShrink: 0 }} />
+                Ask the client to scan or copy this to pay
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1299,6 +2054,855 @@ function SuperAdminPanel({ token }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* ================= REPORTS ================= */
+function Reports({ setLoadError }) {
+  const [period, setPeriod] = useState("month");
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    api.getReports(period)
+      .then((res) => { if (!cancelled) setData(res); })
+      .catch((err) => { if (!cancelled) setLoadError(err.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [period, setLoadError]);
+
+  return (
+    <div style={{ animation: "fadeIn 0.3s ease-out" }}>
+      <PageHeader title="Reports" sub="Revenue and employee performance overview."
+        action={
+          <div style={{ display: "flex", gap: 6, background: "#F2ECE7", padding: 4, borderRadius: 14 }}>
+            {[["day", "Day"], ["month", "Month"], ["year", "Year"]].map(([p, label]) => (
+              <button key={p} onClick={() => setPeriod(p)} style={{
+                padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 12.5,
+                fontWeight: 500, fontFamily: fontSans, background: period === p ? C.card : "transparent",
+                color: period === p ? C.plum : C.sub, boxShadow: period === p ? "0 4px 10px -4px rgba(43,27,46,0.25)" : "none",
+              }}>{label}</button>
+            ))}
+          </div>
+        } />
+
+      {loading && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.sub, fontSize: 14 }}>
+          <Loader2 className="spinner" size={16} color={C.plum} /> Loading report…
+        </div>
+      )}
+
+      {!loading && data && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 26 }}>
+            <div className="vellora-card" style={card}>
+              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{money(data.totalRevenue)}</div>
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>Total revenue</div>
+            </div>
+            <div className="vellora-card" style={card}>
+              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{data.totalAppointments}</div>
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>Paid appointments</div>
+            </div>
+          </div>
+
+          <div className="vellora-card" style={{ ...card, marginBottom: 20 }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>Revenue trend</h3>
+            <RevenueBarChart rows={data.revenueTrend} />
+          </div>
+
+          <div className="vellora-card" style={card}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>Employee performance</h3>
+            {data.employeePerformance.length === 0 && <p style={{ color: C.sub, fontSize: 13 }}>No data yet.</p>}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {data.employeePerformance.map((e) => (
+                <EmployeeBar key={e.employee} employee={e} max={data.employeePerformance[0]?.revenue || 1} />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function RevenueBarChart({ rows }) {
+  if (!rows || rows.length === 0) return <p style={{ color: C.sub, fontSize: 13 }}>No revenue data yet.</p>;
+
+  const max = Math.max(...rows.map((r) => Number(r.revenue)), 1);
+  // Y-axis ke liye ek clean round number nikalo (jaise 600 ho to 800 tak scale karo)
+  const niceMax = Math.ceil(max / (max > 1000 ? 1000 : 100)) * (max > 1000 ? 1000 : 100) || max;
+
+  const width = 700, height = 280, padding = 50, bottomPadding = 40;
+  const chartHeight = height - padding - bottomPadding;
+  const barWidth = Math.min(70, (width - padding * 2) / rows.length - 20);
+  const gap = (width - padding * 2 - barWidth * rows.length) / (rows.length + 1);
+
+  const yTicks = 4; // kitni horizontal gridlines chahiye
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto" }}>
+      {/* Y-axis gridlines aur labels */}
+      {Array.from({ length: yTicks + 1 }).map((_, i) => {
+        const value = (niceMax / yTicks) * i;
+        const y = height - bottomPadding - (chartHeight / yTicks) * i;
+        return (
+          <g key={i}>
+            <line x1={padding} y1={y} x2={width - 10} y2={y} stroke={C.line} strokeWidth="1" />
+            <text x={padding - 10} y={y + 4} textAnchor="end" fontSize="10" fill={C.sub}>
+              {value >= 1000 ? `${(value / 1000).toFixed(0)}k` : Math.round(value)}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* X aur Y axis lines */}
+      <line x1={padding} y1={height - bottomPadding} x2={width - 10} y2={height - bottomPadding} stroke={C.ink} strokeWidth="1.5" />
+      <line x1={padding} y1={padding - 10} x2={padding} y2={height - bottomPadding} stroke={C.ink} strokeWidth="1.5" />
+
+      {/* Bars, value labels, date labels */}
+      {rows.map((r, idx) => {
+        const barHeight = (Number(r.revenue) / niceMax) * chartHeight;
+        const x = padding + gap + idx * (barWidth + gap);
+        const y = height - bottomPadding - barHeight;
+        return (
+          <g key={r.period}>
+            <text x={x + barWidth / 2} y={y - 8} textAnchor="middle" fontSize="11" fontWeight="600" fill={C.ink}>
+              {money(r.revenue)}
+            </text>
+            <rect x={x} y={y} width={barWidth} height={barHeight} fill={C.plum} rx={4} />
+            <text x={x + barWidth / 2} y={height - bottomPadding + 18} textAnchor="middle" fontSize="10" fill={C.sub}>
+              {r.period}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function EmployeeBar({ employee, max }) {
+  const pct = Math.min(100, (Number(employee.revenue) / max) * 100);
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+        <span style={{ fontWeight: 500 }}>{employee.employee}</span>
+        <span style={{ color: C.sub }}>{money(employee.revenue)} · {employee.appointments} appts</span>
+      </div>
+      <div style={{ background: "#F2ECE7", borderRadius: 8, height: 8, overflow: "hidden" }}>
+          <div style={{ width: `${pct}%`, height: "100%", background: C.plum, borderRadius: 8 }} />
+      </div>
+    </div>
+  );
+}
+
+/* ================= CUSTOMERS ================= */
+function Customers({ setLoadError, isMobile }) {
+  const [customers, setCustomers] = useState([]);
+  const [paymentSettings, setPaymentSettings] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getCustomers()
+      .then((res) => { if (!cancelled) setCustomers(res.customers || []); })
+      .catch((err) => { if (!cancelled) setLoadError(err.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [setLoadError]);
+
+  const vipCount = customers.filter((c) => c.is_vip).length;
+
+  return (
+    <div style={{ animation: "fadeIn 0.3s ease-out" }}>
+      <PageHeader title="Customers" sub="Your client base, ranked by loyalty and spend." />
+
+      {loading && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.sub, fontSize: 14 }}>
+          <Loader2 className="spinner" size={16} color={C.plum} /> Loading customers…
+        </div>
+      )}
+
+      {!loading && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 26 }}>
+            <div className="vellora-card" style={card}>
+              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{customers.length}</div>
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>Total customers</div>
+            </div>
+            <div className="vellora-card" style={card}>
+              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice, color: C.gold }}>{vipCount}</div>
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>VIP customers</div>
+            </div>
+          </div>
+
+          {customers.length === 0 ? (
+            <div style={{ padding: "32px 24px", textAlign: "center", background: "#FCFAF8", borderRadius: 16, border: `1px dashed ${C.line}` }}>
+              <Users size={22} color={C.gold} style={{ marginBottom: 12 }} />
+              <p style={{ color: C.sub, fontSize: 14, margin: 0 }}>No customers yet. They'll appear here once appointments are marked "payment done".</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {customers.map((c) => (
+                <div key={c.id} className="vellora-card" style={{ ...card, padding: isMobile ? "14px 16px" : "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: c.is_vip ? C.gold : C.goldLight, color: c.is_vip ? "#fff" : C.plum, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: 15 }}>
+                      {c.name?.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontWeight: 600, fontSize: 15, color: C.ink }}>{c.name}</span>
+                        {c.is_vip ? (
+                          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 8px", borderRadius: 20, backgroundColor: C.goldBg, color: "#997340" }}>VIP</span>
+                        ) : null}
+                      </div>
+                      <div style={{ fontSize: 12.5, color: C.sub, marginTop: 3 }}>{c.phone || "No phone on file"} · Last visit: {c.last_visit_date || "—"}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 24, textAlign: "right" }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>{c.total_visits}</div>
+                      <div style={{ fontSize: 11, color: C.sub }}>Visits</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>{money(c.total_spent)}</div>
+                      <div style={{ fontSize: 11, color: C.sub }}>Spent</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ================= PAYMENT SETTINGS ================= */
+function PaymentSettings({ setPaymentSettings, setLoadError, isMobile }) {
+  const [upiId, setUpiId] = useState("");
+  const [qrImage, setQrImage] = useState(""); // base64
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    api.getSettings()
+      .then((res) => {
+        setUpiId(res.settings?.upi_id || "");
+        setQrImage(res.settings?.qr_image_url || "");
+      })
+      .catch((err) => setLoadError(err.message))
+      .finally(() => setLoading(false));
+  }, [setLoadError]);
+
+  const readFile = (file) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => { setQrImage(reader.result); setSaved(false); };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileUpload = (e) => readFile(e.target.files[0]);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragActive(false);
+    readFile(e.dataTransfer.files[0]);
+  };
+
+  const copyUpi = () => {
+    if (!upiId) return;
+    navigator.clipboard.writeText(upiId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setSaved(false);
+    try {
+      await api.updateSettings({ upi_id: upiId, qr_image_url: qrImage });
+      setSaved(true);
+      if (setPaymentSettings) {
+        setPaymentSettings({ upi_id: upiId, qr_image_url: qrImage });
+      }
+    } catch (err) {
+      setLoadError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.sub, fontSize: 14 }}>
+        <Loader2 className="spinner" size={16} color={C.plum} /> Loading settings…
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ animation: "fadeIn 0.3s ease-out" }}>
+      <PageHeader title="Payment Settings" sub="Set up your QR code so clients can pay you directly." />
+
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.2fr 1fr", gap: 24, alignItems: "start" }}>
+
+        {/* LEFT: Form */}
+        <div className="vellora-card" style={card}>
+          <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 600, color: C.ink }}>Your Payment QR Code</h3>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: C.sub }}>Upload once — it'll be shown to clients whenever you collect payment.</p>
+
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={handleDrop}
+            style={{
+              position: "relative",
+              border: `2px dashed ${dragActive ? C.plum : C.line}`,
+              borderRadius: 16,
+              padding: qrImage ? 16 : 32,
+              textAlign: "center",
+              background: dragActive ? C.goldBg : "#FCFAF8",
+              transition: "all 0.2s ease",
+              marginBottom: 20
+            }}
+          >
+            {qrImage ? (
+              <div>
+                <img src={qrImage} alt="Payment QR" style={{ width: 160, height: 160, objectFit: "contain", border: `1px solid ${C.line}`, borderRadius: 12, padding: 8, background: "#fff" }} />
+                <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 14 }}>
+                  <label style={{ ...btnGhost, background: C.card, color: C.plum, border: `1px solid ${C.line}`, boxShadow: "none", padding: "8px 16px", cursor: "pointer" }}>
+                    Replace
+                    <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: "none" }} />
+                  </label>
+                  <button
+                    onClick={() => { setQrImage(""); setSaved(false); }}
+                    style={{ ...btnGhost, background: C.redBg, color: C.red, boxShadow: "none", padding: "8px 16px" }}
+                  >
+                    <Trash2 size={14} /> Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label style={{ cursor: "pointer", display: "block" }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: C.goldLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+                  <ImageIcon size={22} color={C.gold} />
+                </div>
+                <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 600, color: C.ink }}>Drop QR image here</p>
+                <p style={{ margin: 0, fontSize: 12.5, color: C.sub }}>or click to browse · PNG, JPG</p>
+                <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: "none" }} />
+              </label>
+            )}
+          </div>
+
+          <Field label="UPI ID (optional, shown as backup)">
+            <div style={{ position: "relative" }}>
+              <input
+                className="vellora-input"
+                placeholder="yourname@upi"
+                value={upiId}
+                onChange={(e) => { setUpiId(e.target.value); setSaved(false); }}
+                style={{ ...inputStyle, paddingRight: upiId ? 44 : 16 }}
+              />
+              {upiId && (
+                <button
+                  onClick={copyUpi}
+                  title="Copy UPI ID"
+                  style={{ position: "absolute", right: 8, top: 8, background: "none", border: "none", cursor: "pointer", color: copied ? C.green : C.sub, padding: 6 }}
+                >
+                  {copied ? <Check size={16} /> : <Package size={16} style={{ display: "none" }} />}
+                  {!copied && <span style={{ fontSize: 11, fontWeight: 600 }}>Copy</span>}
+                  {copied && <span style={{ fontSize: 11, fontWeight: 600, marginLeft: 4 }}>Copied</span>}
+                </button>
+              )}
+            </div>
+          </Field>
+
+          <button className="vellora-btn" onClick={save} disabled={saving} style={{ ...primaryBtn, width: isMobile ? "100%" : "auto", padding: "12px 32px", opacity: saving ? 0.7 : 1 }}>
+            {saving ? <Loader2 className="spinner" size={16} /> : <Check size={16} />}
+            {saving ? "Saving..." : "Save Settings"}
+          </button>
+
+          {saved && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, padding: "10px 14px", backgroundColor: C.greenBg, borderRadius: 10 }}>
+              <Check size={15} color={C.green} />
+              <p style={{ color: C.green, fontSize: 13, margin: 0, fontWeight: 500 }}>Settings saved successfully.</p>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: Live preview */}
+        <div className="vellora-card" style={{ ...card, background: `linear-gradient(160deg, ${C.plum} 0%, #1A101C 100%)`, textAlign: "center", position: "sticky", top: 20 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: "rgba(255,255,255,0.6)", margin: "0 0 16px" }}>
+            Client-facing preview
+          </p>
+          {qrImage || upiId ? (
+            <div style={{ background: "#fff", borderRadius: 16, padding: "24px 20px" }}>
+              {qrImage ? (
+                <img src={qrImage} alt="Preview" style={{ width: 160, height: 160, objectFit: "contain", borderRadius: 12, margin: "0 auto" }} />
+              ) : (
+                <div style={{ padding: "16px 12px", background: "#FCFAF8", borderRadius: 12, border: `1px solid ${C.line}` }}>
+                  <p style={{ fontSize: 11, color: C.sub, margin: "0 0 6px", textTransform: "uppercase", fontWeight: 600 }}>UPI ID</p>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: 0 }}>{upiId}</p>
+                </div>
+              )}
+              <p style={{ fontSize: 12, color: C.sub, marginTop: 14, marginBottom: 0 }}>This is what clients scan when you tap "Collect Payment" on a booking.</p>
+            </div>
+          ) : (
+            <div style={{ padding: "32px 16px", border: "1px dashed rgba(255,255,255,0.25)", borderRadius: 12 }}>
+              <Wallet size={22} color="rgba(255,255,255,0.4)" style={{ marginBottom: 10 }} />
+              <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12.5, margin: 0 }}>Add a QR code or UPI ID to see the preview.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Settings({ isMobile }) {
+
+  const settingsLabel = {
+    display: "block",
+    fontSize: 13,
+    fontWeight: 600,
+    color: C.ink,
+    marginBottom: 7
+  };
+
+  const settingsInput = {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "11px 12px",
+    border: `1px solid ${C.line}`,
+    borderRadius: 10,
+    background: "#fff",
+    color: C.ink,
+    fontSize: 13.5,
+    outline: "none",
+    fontFamily: fontSans
+  };
+
+  const [profile, setProfile] = useState({
+    salon_name: "",
+    owner_name: "",
+    phone: "",
+    email: "",
+    address: "",
+    currency: "INR",
+    timezone: "Asia/Kolkata",
+    opening_time: "10:00",
+    closing_time: "20:00",
+    allow_online_bookings: true,
+    appointment_reminders: true,
+    allow_cancellations: true,
+    require_customer_phone: true
+  });
+
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  useEffect(() => {
+    api.getSalonSettings()
+      .then((res) => {
+        setProfile((prev) => ({
+          ...prev,
+          salon_name: res.settings?.salon_name || "",
+          owner_name: res.settings?.owner_name || "",
+          phone: res.settings?.phone || "",
+          email: res.settings?.email || "",
+          address: res.settings?.address || "",
+          currency: res.settings?.currency || "INR",
+          timezone: res.settings?.timezone || "Asia/Kolkata",
+          opening_time: res.settings?.opening_time || "10:00",
+          closing_time: res.settings?.closing_time || "20:00",
+          allow_online_bookings: res.settings?.allow_online_bookings ?? true,
+          appointment_reminders: res.settings?.appointment_reminders ?? true,
+          allow_cancellations: res.settings?.allow_cancellations ?? true,
+          require_customer_phone: res.settings?.require_customer_phone ?? true
+        }));
+      })
+      .catch((err) => {
+        console.error("Failed to load salon settings:", err);
+      })
+      .finally(() => setProfileLoading(false));
+  }, []);
+
+  const updateProfile = (field, value) => {
+    setProfile((prev) => ({
+      ...prev,
+      [field]: value
+    }));
+    setProfileSaved(false);
+  };
+
+  const saveProfile = async () => {
+    setProfileSaving(true);
+    setProfileSaved(false);
+
+    try {
+      await api.updateSalonSettings({
+        salon_name: profile.salon_name,
+        owner_name: profile.owner_name,
+        phone: profile.phone,
+        email: profile.email,
+        address: profile.address,
+        currency: profile.currency,
+        timezone: profile.timezone,
+        opening_time: profile.opening_time,
+        closing_time: profile.closing_time,
+        allow_online_bookings: profile.allow_online_bookings,
+        appointment_reminders: profile.appointment_reminders,
+        allow_cancellations: profile.allow_cancellations,
+        require_customer_phone: profile.require_customer_phone
+      });
+
+      setProfileSaved(true);
+    } catch (err) {
+      console.error("Failed to save salon settings:", err);
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ animation: "fadeIn 0.4s ease-out" }}>
+      <PageHeader
+        title="Settings"
+        sub="Manage your salon preferences and account settings."
+      />
+
+      <div
+        className="vellora-card"
+        style={{
+          ...card,
+          padding: 24,
+          marginBottom: 20
+        }}
+      >
+        <div style={{ marginBottom: 20 }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 17,
+              fontWeight: 600,
+              color: C.ink
+            }}
+          >
+            Salon Settings
+          </h3>
+
+          <p
+            style={{
+              margin: "6px 0 0",
+              fontSize: 13.5,
+              color: C.sub
+            }}
+          >
+            General settings for your salon.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* SALON PROFILE */}
+          <div className="vellora-card" style={{ ...card, padding: 24 }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: C.ink }}>
+              Salon Profile
+            </h3>
+
+            <p style={{ margin: "6px 0 20px", fontSize: 13.5, color: C.sub }}>
+              Manage your salon's basic information.
+            </p>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                gap: 16
+              }}
+            >
+              <div>
+                <label style={settingsLabel}>Salon Name</label>
+                <input
+                  style={settingsInput}
+                  placeholder="Enter salon name"
+                  value={profile.salon_name}
+                  onChange={(e) => updateProfile("salon_name", e.target.value)}
+                  disabled={profileLoading}
+                />
+              </div>
+
+              <div>
+                <label style={settingsLabel}>Owner / Admin Name</label>
+                <input
+                  style={settingsInput}
+                  placeholder="Enter owner name"
+                  value={profile.owner_name}
+                  onChange={(e) => updateProfile("owner_name", e.target.value)}
+                  disabled={profileLoading}
+                />
+              </div>
+
+              <div>
+                <label style={settingsLabel}>Phone Number</label>
+                <input
+                  style={settingsInput}
+                  placeholder="Enter phone number"
+                  value={profile.phone}
+                  onChange={(e) => updateProfile("phone", e.target.value)}
+                  disabled={profileLoading}
+                />
+              </div>
+
+              <div>
+                <label style={settingsLabel}>Email Address</label>
+                <input
+                  style={settingsInput}
+                  placeholder="Enter email address"
+                  type="email"
+                  value={profile.email}
+                  onChange={(e) => updateProfile("email", e.target.value)}
+                  disabled={profileLoading}
+                />
+              </div>
+
+              <div style={{ gridColumn: isMobile ? "auto" : "1 / -1" }}>
+                <label style={settingsLabel}>Salon Address</label>
+                <textarea
+                  style={{ ...settingsInput, minHeight: 90, resize: "vertical" }}
+                  placeholder="Enter salon address"
+                  value={profile.address}
+                  onChange={(e) => updateProfile("address", e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+
+          {/* BUSINESS SETTINGS */}
+          <div className="vellora-card" style={{ ...card, padding: 24 }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: C.ink }}>
+              Business Settings
+            </h3>
+
+            <p style={{ margin: "6px 0 20px", fontSize: 13.5, color: C.sub }}>
+              Configure your salon's working hours and business preferences.
+            </p>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                gap: 16
+              }}
+            >
+              <div>
+                <label style={settingsLabel}>Currency</label>
+                <select style={settingsInput} value={profile.currency} onChange={(e) => updateProfile("currency", e.target.value)}>
+                  <option value="INR">Indian Rupee (₹)</option>
+                  <option value="USD">US Dollar ($)</option>
+                  <option value="EUR">Euro (€)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={settingsLabel}>Time Zone</label>
+                <select style={settingsInput} value={profile.timezone} onChange={(e) => updateProfile("timezone", e.target.value)}>
+                  <option value="Asia/Kolkata">India Standard Time (IST)</option>
+                  <option value="Asia/Dubai">Gulf Standard Time (GST)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={settingsLabel}>Opening Time</label>
+                <input type="time" style={settingsInput} value={profile.opening_time} onChange={(e) => updateProfile("opening_time", e.target.value)} />
+              </div>
+
+              <div>
+                <label style={settingsLabel}>Closing Time</label>
+                <input type="time" style={settingsInput} value={profile.closing_time} onChange={(e) => updateProfile("closing_time", e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+
+          {/* APPOINTMENT SETTINGS */}
+          <div className="vellora-card" style={{ ...card, padding: 24 }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: C.ink }}>
+              Appointment Settings
+            </h3>
+
+            <p style={{ margin: "6px 0 20px", fontSize: 13.5, color: C.sub }}>
+              Control how appointments are handled in your salon.
+            </p>
+
+            {[
+              ["Allow Online Bookings", "Customers can book appointments online.", "allow_online_bookings"],
+              ["Appointment Reminders", "Send reminders for upcoming appointments.", "appointment_reminders"],
+              ["Allow Cancellations", "Allow customers to cancel their appointments.", "allow_cancellations"],
+              ["Require Customer Phone", "Require a phone number when creating an appointment.", "require_customer_phone"],
+            ].map(([title, description, field]) => (
+              <div
+                key={title}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 16,
+                  padding: "15px 0",
+                  borderTop: `1px solid ${C.line}`
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>
+                    {title}
+                  </div>
+                  <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>
+                    {description}
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => updateProfile(field, !profile[field])}
+                  style={{
+                    width: 42,
+                    height: 23,
+                    borderRadius: 20,
+                    background: profile[field] ? C.gold : C.line,
+                    position: "relative",
+                    flexShrink: 0,
+                    cursor: "pointer",
+                    transition: "background 0.2s"
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 17,
+                      height: 17,
+                      borderRadius: "50%",
+                      background: "#fff",
+                      position: "absolute",
+                      top: 3,
+                      left: profile[field] ? 22 : 3,
+                      transition: "left 0.2s"
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+
+          {/* NOTIFICATIONS */}
+          <div className="vellora-card" style={{ ...card, padding: 24 }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: C.ink }}>
+              Notifications
+            </h3>
+
+            <p style={{ margin: "6px 0 20px", fontSize: 13.5, color: C.sub }}>
+              Choose which notifications you want to receive.
+            </p>
+
+            {[
+              ["New Appointment", "Get notified when a new appointment is created."],
+              ["Payment Updates", "Get notified when an appointment payment is completed."],
+              ["Low Stock Alerts", "Get notified when inventory reaches its reorder level."],
+            ].map(([title, description]) => (
+              <div
+                key={title}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "15px 0",
+                  borderTop: `1px solid ${C.line}`
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>
+                    {title}
+                  </div>
+                  <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>
+                    {description}
+                  </div>
+                </div>
+
+                <input
+                  type="checkbox"
+                  defaultChecked
+                  style={{ width: 17, height: 17, accentColor: C.gold, cursor: "pointer" }}
+                />
+              </div>
+            ))}
+          </div>
+
+
+          {/* SECURITY */}
+          <div className="vellora-card" style={{ ...card, padding: 24 }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: C.ink }}>
+              Security
+            </h3>
+
+            <p style={{ margin: "6px 0 20px", fontSize: 13.5, color: C.sub }}>
+              Manage your account security.
+            </p>
+
+            <button
+              className="vellora-btn"
+              style={{
+                background: "transparent",
+                border: `1px solid ${C.line}`,
+                color: C.ink,
+                padding: "11px 18px",
+                borderRadius: 10,
+                fontSize: 13.5,
+                fontWeight: 600,
+                cursor: "pointer"
+              }}
+            >
+              Change Password
+            </button>
+          </div>
+
+          {/* SAVE ALL SETTINGS */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <button
+              className="vellora-btn"
+              onClick={saveProfile}
+              disabled={profileSaving || profileLoading}
+              style={{
+                background: C.plum,
+                color: "#fff",
+                border: "none",
+                padding: "12px 24px",
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: profileSaving ? "not-allowed" : "pointer",
+                opacity: profileSaving ? 0.7 : 1
+              }}
+            >
+              {profileSaving ? "Saving..." : "Save Changes"}
+            </button>
+
+            {profileSaved && (
+              <span style={{ fontSize: 13, color: "#3D7A52", fontWeight: 500 }}>
+                Changes saved successfully
+              </span>
+            )}
+          </div>
+
+        </div>
+      </div>
     </div>
   );
 }

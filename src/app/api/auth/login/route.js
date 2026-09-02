@@ -35,6 +35,7 @@ export async function POST(req) {
       user: { id: user.id, name: user.name, role: user.role, salonId: user.salon_id, salonName: user.salon_name },
     });
   } catch (err) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error("LOGIN ERROR:", err);
+    return NextResponse.json({ success: false, error: err.message || String(err) }, { status: 500 });
   }
 }
