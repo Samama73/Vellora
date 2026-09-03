@@ -265,13 +265,25 @@ function Field({ label, children }) {
   );
 }
 
+function EmptyState({ icon: Icon, title, description }) {
+  return (
+    <div style={{ padding: "36px 24px", textAlign: "center", background: "#FCFAF8", borderRadius: 16, border: `1px dashed ${C.line}` }}>
+      <div style={{ width: 48, height: 48, borderRadius: 12, background: C.goldLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+        <Icon size={22} color={C.gold} />
+      </div>
+      <h3 style={{ margin: "0 0 4px", fontSize: 14.5, fontWeight: 600, color: C.ink }}>{title}</h3>
+      {description && <p style={{ color: C.sub, fontSize: 13, margin: 0, lineHeight: 1.5 }}>{description}</p>}
+    </div>
+  );
+}
+
 function PageHeader({ title, sub, action }) {
   const mobile = useIsMobile();
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: mobile ? 18 : 32, flexWrap: "wrap", gap: mobile ? 10 : 16 }}>
-      <div>
+    <div style={{ display: "flex", flexDirection: mobile ? "column" : "row", justifyContent: "space-between", alignItems: mobile ? "center" : "flex-end", marginBottom: mobile ? 18 : 32, flexWrap: "wrap", gap: mobile ? 10 : 16 }}>
+      <div style={{ textAlign: mobile ? "center" : "left", width: mobile ? "100%" : "auto" }}>
         <h1 style={{ fontFamily: fontVoice, fontSize: mobile ? 19 : 28, fontWeight: 600, margin: 0, color: C.ink }}>{title}</h1>
-        {sub && <p style={{ color: C.sub, fontSize: mobile ? 12 : 14.5, margin: "4px 0 0", lineHeight: 1.4 }}>{sub}</p>}
+        {sub && !mobile && <p style={{ color: C.sub, fontSize: 14.5, margin: "4px 0 0", lineHeight: 1.4 }}>{sub}</p>}
       </div>
       {action}
     </div>
@@ -640,6 +652,27 @@ export default function SalonManager() {
 
   const isMobile = useIsMobile();
   const touchStartX = useRef(null);
+  const tabHistoryRef = useRef([]);
+  const [canGoBack, setCanGoBack] = useState(false);
+  const prevTabRef = useRef(tab);
+
+  useEffect(() => {
+    if (prevTabRef.current !== tab) {
+      tabHistoryRef.current = [...tabHistoryRef.current, prevTabRef.current];
+      prevTabRef.current = tab;
+      setCanGoBack(tabHistoryRef.current.length > 0);
+    }
+  }, [tab]);
+
+  const goBack = () => {
+    const hist = tabHistoryRef.current;
+    if (hist.length === 0) return;
+    const prevTab = hist[hist.length - 1];
+    tabHistoryRef.current = hist.slice(0, -1);
+    prevTabRef.current = prevTab;
+    setTab(prevTab);
+    setCanGoBack(tabHistoryRef.current.length > 0);
+  };
 
   useEffect(() => {
     const existing = loadSession();
@@ -852,18 +885,23 @@ export default function SalonManager() {
               <Scissors size={20} color={C.gold} />
               <span style={{ fontFamily: fontVoice, fontSize: 18, fontWeight: 600 }}>Vellora</span>
             </div>
-            <div style={{ width: 28 }} />
+            {canGoBack ? (
+              <button onClick={goBack} style={{ background: "none", border: "none", cursor: "pointer", color: C.ink, padding: 4, width: 28, display: "flex", justifyContent: "flex-end" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+              </button>
+            ) : (
+              <div style={{ width: 28 }} />
+            )}
           </div>
         )}
+
+        
+
 
         {!isMobile && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, gap: 16 }}>
             <SearchBar setTab={setTab} />
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <button style={{ position: "relative", background: C.card, border: "none", borderRadius: "50%", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 1px 3px rgba(43,27,46,0.08)" }}>
-                <Bell size={16} color={C.ink} />
-                <span style={{ position: "absolute", top: 8, right: 9, width: 6, height: 6, borderRadius: "50%", background: C.gold }} />
-              </button>
               <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.card, borderRadius: 999, padding: "5px 14px 5px 5px", boxShadow: "0 1px 3px rgba(43,27,46,0.08)" }}>
                 <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.gold, display: "flex", alignItems: "center", justifyContent: "center", color: C.plum, fontWeight: 700, fontSize: 12 }}>
                   {user.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
@@ -1837,7 +1875,7 @@ function Team({ employees, setEmployees, inventory, setInventory, setLoadError, 
       {section === "employees" ? (
         <div style={{ animation: "fadeIn 0.3s ease-out" }}>
           <div className="vellora-card" style={{ ...card, marginBottom: 28, background: "#FDFBF9", border: `1px solid ${C.goldLight}` }}>
-            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>Onboard New Staff Member</h3>
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>Add New Staff Member</h3>
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit,minmax(180px,1fr))", gap: 16 }}>
               <input className="vellora-input" placeholder="Full Name" value={ef.name} onChange={(e) => setEf({ ...ef, name: e.target.value })} style={inputStyle} />
               <input className="vellora-input" placeholder="Designation (e.g. Senior Stylist)" value={ef.position} onChange={(e) => setEf({ ...ef, position: e.target.value })} style={inputStyle} />
@@ -2099,10 +2137,16 @@ function Reports({ setLoadError }) {
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 26 }}>
             <div className="vellora-card" style={card}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <Wallet size={20} color="#fff" />
+              </div>
               <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{money(data.totalRevenue)}</div>
               <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>Total revenue</div>
             </div>
             <div className="vellora-card" style={card}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: "#8B5CF6", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <Calendar size={20} color="#fff" />
+              </div>
               <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{data.totalAppointments}</div>
               <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>Paid appointments</div>
             </div>
@@ -2115,7 +2159,7 @@ function Reports({ setLoadError }) {
 
           <div className="vellora-card" style={card}>
             <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>Employee performance</h3>
-            {data.employeePerformance.length === 0 && <p style={{ color: C.sub, fontSize: 13 }}>No data yet.</p>}
+            {data.employeePerformance.length === 0 && <EmptyState icon={Users} title="No data yet" description="Staff performance will appear here once appointments are completed and paid." />}
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {data.employeePerformance.map((e) => (
                 <EmployeeBar key={e.employee} employee={e} max={data.employeePerformance[0]?.revenue || 1} />
@@ -2129,7 +2173,7 @@ function Reports({ setLoadError }) {
 }
 
 function RevenueBarChart({ rows }) {
-  if (!rows || rows.length === 0) return <p style={{ color: C.sub, fontSize: 13 }}>No revenue data yet.</p>;
+  if (!rows || rows.length === 0) return <EmptyState icon={TrendingUp} title="No revenue data yet" description="Once you mark appointments as paid, your revenue trend will show up here." />;
 
   const max = Math.max(...rows.map((r) => Number(r.revenue)), 1);
   // Y-axis ke liye ek clean round number nikalo (jaise 600 ho to 800 tak scale karo)
@@ -2229,20 +2273,23 @@ function Customers({ setLoadError, isMobile }) {
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 26 }}>
             <div className="vellora-card" style={card}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <Users size={20} color="#fff" />
+              </div>
               <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{customers.length}</div>
               <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>Total customers</div>
             </div>
             <div className="vellora-card" style={card}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: C.gold, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <Sparkles size={20} color="#fff" />
+              </div>
               <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice, color: C.gold }}>{vipCount}</div>
               <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>VIP customers</div>
             </div>
           </div>
 
           {customers.length === 0 ? (
-            <div style={{ padding: "32px 24px", textAlign: "center", background: "#FCFAF8", borderRadius: 16, border: `1px dashed ${C.line}` }}>
-              <Users size={22} color={C.gold} style={{ marginBottom: 12 }} />
-              <p style={{ color: C.sub, fontSize: 14, margin: 0 }}>No customers yet. They'll appear here once appointments are marked "payment done".</p>
-            </div>
+            <EmptyState icon={Users} title="No customers yet" description="They'll appear here once appointments are marked payment done." />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {customers.map((c) => (
