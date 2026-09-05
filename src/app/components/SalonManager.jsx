@@ -453,6 +453,7 @@ function LoginScreen({ onAuthed }) {
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -463,6 +464,7 @@ function LoginScreen({ onAuthed }) {
     setError("");
     if (mode === "register" && !salonName.trim()) return setError("Please enter your salon's name.");
     if (mode === "register" && !name.trim()) return setError("Please provide your full name.");
+    if (mode === "register" && !agreedToTerms) return setError("Please agree to the Terms & Conditions and Privacy Policy to continue.");
     if (!username.trim()) return setError("A username is required to proceed.");
     if (!password || password.length < 4) return setError("Password must be at least 4 characters long.");
 
@@ -596,6 +598,39 @@ function LoginScreen({ onAuthed }) {
               </Field>
             </div>
 
+            {mode === "register" && (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 4, marginBottom: 20 }}>
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  style={{ width: 16, height: 16, marginTop: 2, flexShrink: 0, accentColor: C.plum, cursor: "pointer" }}
+                />
+                <label
+                  onClick={() => setAgreedToTerms((v) => !v)}
+                  style={{ fontSize: isMobile ? 11.5 : 12.5, color: C.sub, lineHeight: 1.5, cursor: "pointer", userSelect: "none" }}
+                >
+                  I agree to the{" "}
+                  
+                  <a href="https://vellora.salonchairwala.com/terms.html" target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: C.plum, fontWeight: 600, textDecoration: "underline" }}>
+
+                    Terms & Conditions
+                  </a>{" "}
+                  and{" "}
+                  
+                  <a href="https://vellora.salonchairwala.com/privacy.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ color: C.plum, fontWeight: 600, textDecoration: "underline" }}
+                  >
+                    Privacy Policy
+                  </a>
+                  , and consent to my data being used for marketing/promotional communications (SMS, WhatsApp, Email).
+                </label>
+              </div>
+            )}
+
             {error && (
               <div style={{ padding: "12px 14px", backgroundColor: C.redBg, borderLeft: `4px solid ${C.red}`, borderRadius: 8, marginBottom: 20 }}>
                 <p style={{ color: C.red, fontSize: 13.5, margin: 0, fontWeight: 500 }}>{error}</p>
@@ -603,7 +638,17 @@ function LoginScreen({ onAuthed }) {
             )}
 
             <div className="field-fade-3">
-              <button type="submit" disabled={busy} className="vellora-btn" style={{ ...primaryBtn, marginTop: 24, opacity: busy ? 0.8 : 1 }}>
+              <button
+                type="submit"
+                disabled={busy || (mode === "register" && !agreedToTerms)}
+                className="vellora-btn"
+                style={{
+                  ...primaryBtn,
+                  marginTop: 24,
+                  opacity: (busy || (mode === "register" && !agreedToTerms)) ? 0.6 : 1,
+                  cursor: (mode === "register" && !agreedToTerms) ? "not-allowed" : "pointer"
+                }}
+              >
                 {busy ? <Loader2 className="spinner" size={18} /> : null}
                 {busy ? "Authenticating..." : mode === "register" ? "Register Salon" : "Sign In"}
               </button>
