@@ -51,6 +51,11 @@ function GlobalFonts() {
           box-shadow: 0 0 0 4px rgba(43, 27, 46, 0.08);
           background-color: #FFFFFF !important;
         }
+        .vellora-input::placeholder {
+          color: #B0A6AA !important;
+          opacity: 1;
+          font-style: italic;
+        }
         .vellora-btn:hover:not(:disabled) {
           background-color: ${C.plumHover} !important;
           transform: translateY(-2px) scale(1.02);
@@ -259,7 +264,7 @@ const iconBtn = { background: "transparent", border: "none", cursor: "pointer", 
 function Field({ label, children }) {
   return (
     <div style={{ marginBottom: 18 }}>
-      <label style={{ display: "block", fontSize: 13, color: C.ink, marginBottom: 8, fontWeight: 500 }}>{label}</label>
+      <label style={{ display: "block", fontSize: 11, color: C.sub, marginBottom: 8, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</label>
       {children}
     </div>
   );
@@ -559,7 +564,7 @@ function LoginScreen({ onAuthed }) {
           </div>
 
           <form onSubmit={submit} className="form-card-enter" style={{ width: "100%", background: C.card, borderRadius: 24, padding: "40px", border: `1px solid ${C.line}`, boxShadow: "0 24px 50px -20px rgba(43,27,46,0.08)" }}>
-            <h2 style={{ fontFamily: fontVoice, fontSize: 26, fontWeight: 600, color: C.ink, margin: "0 0 8px" }}>
+            <h2 style={{ fontFamily: fontVoice, fontSize: 26, fontWeight: 600, color: C.ink, margin: "0 0 8px", fontStyle: "italic" }}>
               {mode === "register" ? "Create your account" : "Welcome back"}
             </h2>
             <p style={{ color: C.sub, fontSize: 14.5, margin: "0 0 32px", lineHeight: 1.5 }}>
@@ -569,22 +574,22 @@ function LoginScreen({ onAuthed }) {
             {mode === "register" && (
               <>
                 <Field label="Salon Name">
-                  <input className="vellora-input" value={salonName} onChange={(e) => setSalonName(e.target.value)} placeholder="e.g. Elegance Studio" style={inputStyle} />
+                  <input className="vellora-input" value={salonName} onChange={(e) => setSalonName(e.target.value)} placeholder="Lumière Beauty Studio" style={inputStyle} />
                 </Field>
                 <Field label="Full Name">
-                  <input className="vellora-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jane Doe" style={inputStyle} />
+                  <input className="vellora-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Aisha Kapoor" style={inputStyle} />
                 </Field>
                 <Field label="Email Address">
-                  <input className="vellora-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" style={inputStyle} />
+                  <input className="vellora-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="aisha@lumieresalon.com" style={inputStyle} />
                 </Field>
                 <Field label="Access Code">
-                  <input value={accessCode} onChange={(e) => setAccessCode(e.target.value)} placeholder="Enter your Access Code" style={inputStyle} />
+                  <input value={accessCode} onChange={(e) => setAccessCode(e.target.value)} placeholder="Provided by your administrator" style={inputStyle} />
                 </Field>
               </>
             )}
             <div className="field-fade-1">
               <Field label="Username">
-                <input className="vellora-input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter your username" style={inputStyle} />
+                <input className="vellora-input" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="lumiere.aisha" style={inputStyle} />
               </Field>
             </div>
             <div className="field-fade-2">
