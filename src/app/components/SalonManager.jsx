@@ -17,7 +17,14 @@ function useIsMobile(breakpoint = 768) {
   return isMobile;
 }
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+// Local date (not UTC) — .toISOString() shifts dates near midnight IST (UTC+5:30), so we build the string manually
+const toLocalISO = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+const todayISO = () => toLocalISO(new Date());
 const money = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 
 /* ---------- Refined Premium Palette ---------- */
@@ -1028,7 +1035,7 @@ function Dashboard({ appts, inventory, employees, isMobile, setTab }) {
   const weekDays = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
-    return d.toISOString().slice(0, 10);
+    return toLocalISO(d);
   });
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const weekRevenue = weekDays.map((dateStr) => {
@@ -1058,7 +1065,7 @@ function Dashboard({ appts, inventory, employees, isMobile, setTab }) {
   const prevWeekDays = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (13 - i));
-    return d.toISOString().slice(0, 10);
+    return toLocalISO(d);
   });
   const prevWeekTotal = appts
     .filter((a) => prevWeekDays.includes(a.date) && a.status === "payment done")
@@ -1236,13 +1243,23 @@ function Dashboard({ appts, inventory, employees, isMobile, setTab }) {
             </div>
           </div>
 
-          <div className="vellora-card" style={{ ...card, background: `linear-gradient(160deg, ${C.plum} 0%, #1A101C 100%)`, color: "#fff" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>Salon Rating</span>
-              <span style={{ color: C.gold }}>★</span>
+          <div className="vellora-card" style={{ ...card, background: `linear-gradient(160deg, ${C.plum} 0%, #1A101C 100%)`, position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: -40, right: -30, width: 150, height: 150, borderRadius: "50%", background: "rgba(184,147,95,0.07)" }} />
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative", marginBottom: 18 }}>
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", fontWeight: 500 }}>Salon Rating</span>
+              <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, padding: "3px 9px", borderRadius: 20, background: "rgba(184,147,95,0.18)", color: C.gold }}>Coming Soon</span>
             </div>
-            <div style={{ fontFamily: fontVoice, fontSize: 32, fontWeight: 600 }}>4.8</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Based on customer feedback</div>
+
+            <div style={{ display: "flex", gap: 6, marginBottom: 12, position: "relative" }}>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <span key={i} style={{ color: C.gold, fontSize: 26 }}>★</span>
+              ))}
+            </div>
+
+            <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, position: "relative" }}>
+              Customer reviews will appear here once you start collecting feedback
+            </div>
           </div>
         </div>
       </div>
