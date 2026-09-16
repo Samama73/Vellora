@@ -32,7 +32,7 @@ export async function POST(req) {
     const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
 
     await resend.emails.send({
-      from: 'Vellora <onboarding@resend.dev>', // shuru mein Resend ka test domain, baad mein apna domain verify kar sakte ho
+      from: 'Vellora <noreply@salonchairwala.com>',
       to: email,
       subject: 'Vellora — Password Reset',
       html: `
