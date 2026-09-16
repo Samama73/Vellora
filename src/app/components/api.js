@@ -27,8 +27,8 @@ export const api = {
   login: (username, password) => request("/auth/login", { method: "POST", body: { username, password } }),
   forgotPassword: (email) => request("/auth/forgot-password", { method: "POST", body: { email } }),
   resetPassword: (token, newPassword) => request("/auth/reset-password", { method: "POST", body: { token, newPassword } }),
-  register: (salonName, name, username, password, email, accessCode) =>
-    request("/auth/register", { method: "POST", body: { salonName, name, username, password, email, accessCode } }),
+  register: (salonName, name, username, password, email, accessCode, phone) =>
+    request("/auth/register", { method: "POST", body: { salonName, name, username, password, email, accessCode, phone } }),
 
   getAppointments: () => request("/appointments"),
   getReports: (period) => request(`/reports?period=${period}`),
@@ -37,7 +37,7 @@ export const api = {
   getSalonSettings: () => request("/salon-settings"),
   updateSalonSettings: (payload) => request("/salon-settings", { method: "PUT", body: payload }),
   addAppointment: (payload) => request("/appointments", { method: "POST", body: payload }),
-  updateAppointmentStatus: (id, status) => request(`/appointments/${id}`, { method: "PUT", body: { status } }),
+  updateAppointmentStatus: (id, status, paymentMode) => request(`/appointments/${id}`, { method: "PUT", body: { status, paymentMode } }),
   deleteAppointment: (id) => request(`/appointments/${id}`, { method: "DELETE" }),
 
   getInventory: () => request("/inventory"),
@@ -51,6 +51,10 @@ export const api = {
   getEmployees: () => request("/users"),
   addEmployee: (payload) => request("/users", { method: "POST", body: payload }),
   deleteEmployee: (id) => request(`/users/${id}`, { method: "DELETE" }),
+  getAttendance: (date) => request(`/attendance?date=${date}`),
+  getAttendanceSummary: (month) => request(`/attendance?month=${month}`),
+  markAttendance: (payload) => request("/attendance", { method: "POST", body: payload }),
+  deleteAttendance: (id) => request(`/attendance/${id}`, { method: "DELETE" }),
 
   getCustomers: () => request("/customers"),
   search: (q) => request(`/search?q=${encodeURIComponent(q)}`),

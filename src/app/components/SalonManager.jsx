@@ -465,6 +465,7 @@ function LoginScreen({ onAuthed }) {
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [phone, setPhone] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
@@ -477,13 +478,14 @@ function LoginScreen({ onAuthed }) {
     if (mode === "register" && !salonName.trim()) return setError("Please enter your salon's name.");
     if (mode === "register" && !name.trim()) return setError("Please provide your full name.");
     if (mode === "register" && !agreedToTerms) return setError("Please agree to the Terms & Conditions and Privacy Policy to continue.");
+    if (mode === "register" && !phone.trim()) return setError("Please enter your contact number.");
     if (!username.trim()) return setError("A username is required to proceed.");
     if (!password || password.length < 4) return setError("Password must be at least 4 characters long.");
 
     setBusy(true);
     try {
       const res = mode === "register"
-        ? await api.register(salonName.trim(), name.trim(), username.trim(), password, email.trim(), accessCode.trim())
+        ? await api.register(salonName.trim(), name.trim(), username.trim(), password, email.trim(), accessCode.trim(), phone.trim())
         : await api.login(username.trim(), password);
       onAuthed(res.token, res.user);
     } catch (err) {
@@ -589,6 +591,9 @@ function LoginScreen({ onAuthed }) {
                 <Field label="Email Address">
                   <input className="vellora-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="aisha@lumieresalon.com" style={inputStyle} />
                 </Field>
+                <Field label="Contact Number">
+                  <input className="vellora-input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="98765 43210" style={inputStyle} />
+                </Field>
                 <Field label="Access Code">
                   <input value={accessCode} onChange={(e) => setAccessCode(e.target.value)} placeholder="Provided by your administrator" style={inputStyle} />
                 </Field>
@@ -689,6 +694,7 @@ const NAV = [
   { id: "marketing", label: "Marketing", icon: ImageIcon, roles: ["admin", "employee", "superadmin"] },
   { id: "accounts", label: "Accounts", icon: Wallet, roles: ["admin", "superadmin"] },
   { id: "team", label: "Team & Inventory", icon: Package, roles: ["admin", "superadmin"] },
+  { id: "attendance", label: "Attendance", icon: Calendar, roles: ["admin", "superadmin"] },
   { id: "superadmin", label: "All Salons", icon: Users, roles: ["superadmin"] }
 ];
 
@@ -992,6 +998,7 @@ export default function SalonManager() {
           {tab === "marketing" && <Marketing user={user} isMobile={isMobile} />}
           {tab === "accounts" && <Accounts salaries={salaries} setSalaries={setSalaries} employees={employees} setLoadError={setLoadError} isMobile={isMobile} />}
           {tab === "team" && <Team employees={employees} setEmployees={setEmployees} inventory={inventory} setInventory={setInventory} setLoadError={setLoadError} isMobile={isMobile} />}
+          {tab === "attendance" && <Attendance employees={employees} setLoadError={setLoadError} isMobile={isMobile} />}
           {tab === "superadmin" && <SuperAdminPanel token={session.token} />}
         </div>
       </main>
@@ -1269,6 +1276,7 @@ function Dashboard({ appts, inventory, employees, isMobile, setTab }) {
 
 /* ================= APPOINTMENTS ================= */
 const APPT_STATUS = ["not visited", "visited", "payment pending", "payment done"];
+const PAYMENT_MODES = ["cash", "online"];
 
 const getStatusBadge = (status) => {
   const styles = {
@@ -1285,7 +1293,7 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paym
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ client: "", phone: "", service: "", date: todayISO(), time: "10:00", employee: "", price: "" });
+  const [form, setForm] = useState({ client: "", phone: "", service: "", date: todayISO(), time: "10:00", employee: "", price: "", paymentMode: "" });
 
   const add = async () => {
     if (!form.client || !form.service || !form.date || !form.time) return;
@@ -1293,7 +1301,7 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paym
     try {
       const res = await api.addAppointment(form);
       setAppts([{ id: res.id, ...form, status: "not visited" }, ...appts]);
-      setForm({ client: "", phone: "", service: "", date: todayISO(), time: "10:00", employee: "", price: "" });
+      setForm({ client: "", phone: "", service: "", date: todayISO(), time: "10:00", employee: "", price: "", paymentMode: "" });
       setShowForm(false);
     } catch (err) {
       setLoadError("Failed to save appointment. " + err.message);
@@ -1331,11 +1339,25 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paym
     const prev = appts;
     setAppts(appts.map((a) => (a.id === id ? { ...a, status } : a)));
     try {
-      await api.updateAppointmentStatus(id, status);
+      const appt = prev.find((a) => a.id === id);
+      await api.updateAppointmentStatus(id, status, appt?.payment_mode);
       if (status === "payment done") celebrate();
     } catch (err) {
       setAppts(prev);
       setLoadError("Failed to update status. " + err.message);
+    }
+  };
+
+  // Cash ya Online — payment mode alag se change karna (status ko chhue bina)
+  const setPaymentMode = async (id, payment_mode) => {
+    const prev = appts;
+    setAppts(appts.map((a) => (a.id === id ? { ...a, payment_mode } : a)));
+    try {
+      const appt = prev.find((a) => a.id === id);
+      await api.updateAppointmentStatus(id, appt.status, payment_mode);
+    } catch (err) {
+      setAppts(prev);
+      setLoadError("Failed to update payment mode. " + err.message);
     }
   };
 
@@ -1349,6 +1371,22 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paym
       setLoadError("Failed to delete appointment. " + err.message);
     }
   };
+
+  const getFeedbackWhatsAppLink = (appt, salonName) => {
+  if (!appt.phone) return null;
+  const message = `Hi ${appt.client}! 🌟
+
+Thank you for visiting *${salonName}* today for your ${appt.service}.
+
+We'd love to know how your experience was! Could you take a moment to share your feedback?
+
+Your thoughts help us serve you better. 💛
+
+- Team ${salonName}`;
+  const cleanPhone = appt.phone.replace(/\D/g, '');
+  const phoneWithCountryCode = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+  return `https://wa.me/${phoneWithCountryCode}?text=${encodeURIComponent(message)}`;
+};
 
   const getWhatsAppLink = (appt, salonName) => {
     if (!appt.phone) return null;
@@ -1403,6 +1441,10 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paym
             <input className="vellora-input" type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} style={inputStyle} />
             <input className="vellora-input" placeholder="Assigned Staff (Optional)" value={form.employee} onChange={(e) => setForm({ ...form, employee: e.target.value })} style={inputStyle} />
             <input className="vellora-input" placeholder="Estimated Price (₹)" type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} style={inputStyle} />
+            <select className="vellora-input" value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value })} style={inputStyle}>
+              <option value="">Payment Mode</option>
+              {PAYMENT_MODES.map((m) => <option key={m} value={m}>{m.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
+            </select>
           </div>
           <button className="vellora-btn-ghost" style={{ ...btnGhost, marginTop: 20, opacity: saving ? 0.7 : 1, width: isMobile ? "100%" : "auto" }} onClick={add} disabled={saving}>
             {saving ? <Loader2 className="spinner" size={16} /> : <Check size={16} />}
@@ -1467,8 +1509,15 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paym
                     <select className="vellora-input" value={a.status} onChange={(e) => setStatus(a.id, e.target.value)} style={{ ...inputStyle, flex: 1, padding: "7px 10px", fontSize: 12.5 }}>
                       {APPT_STATUS.map((s) => <option key={s} value={s}>{s.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
                     </select>
+                    <select className="vellora-input" value={a.payment_mode || ""} onChange={(e) => setPaymentMode(a.id, e.target.value)} style={{ ...inputStyle, flex: 1, padding: "7px 10px", fontSize: 12.5 }}>
+                      <option value="" disabled>Payment mode</option>
+                      {PAYMENT_MODES.map((m) => <option key={m} value={m}>{m.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
+                    </select>
                     {getWhatsAppLink(a, salonName) && (
                       <a href={getWhatsAppLink(a, salonName)} target="_blank" rel="noopener noreferrer" className="vellora-icon-btn" style={{ ...iconBtn, color: "#25D366" }}><MessageCircle size={17} /></a>
+                    )}
+                    {a.status === "payment done" && getFeedbackWhatsAppLink(a, salonName) && (
+                      <a href={getFeedbackWhatsAppLink(a, salonName)} target="_blank" rel="noopener noreferrer" className="vellora-icon-btn" style={{ ...iconBtn, color: C.gold }} title="Request Feedback"><Sparkles size={17} /></a>
                     )}
                     {(paymentSettings?.qr_image_url || paymentSettings?.upi_id) && (
                       <button className="vellora-icon-btn" style={{ ...iconBtn, color: C.gold }} onClick={() => setCollectPaymentAppt(a)}><Wallet size={17} /></button>
@@ -1485,7 +1534,7 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paym
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#FCFAF8" }}>
-                  {["CLIENT", "SERVICE", "TIME", "STATUS", "AMOUNT", ""].map((h) => (
+                  {["CLIENT", "SERVICE", "TIME", "STATUS", "PAYMENT MODE", "AMOUNT", ""].map((h) => (
                     <th key={h} style={{ textAlign: "left", padding: "12px 20px", fontSize: 11, fontWeight: 700, letterSpacing: 0.6, color: C.sub, borderBottom: `1px solid ${C.line}` }}>{h}</th>
                   ))}
                 </tr>
@@ -1529,6 +1578,12 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paym
                         </select>
                       </td>
                       <td style={{ padding: "16px 20px" }}>
+                        <select className="vellora-input" value={a.payment_mode || ""} onChange={(e) => setPaymentMode(a.id, e.target.value)} style={{ ...inputStyle, padding: "6px 10px", fontSize: 12.5, width: "auto" }}>
+                          <option value="" disabled>—</option>
+                          {PAYMENT_MODES.map((m) => <option key={m} value={m}>{m.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
+                        </select>
+                      </td>
+                      <td style={{ padding: "16px 20px" }}>
                         <span style={{ fontSize: 14.5, fontWeight: 700, color: cancelled ? C.sub : C.ink, textDecoration: cancelled ? "line-through" : "none" }}>
                           {a.price ? money(a.price) : "—"}
                         </span>
@@ -1537,6 +1592,9 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paym
                         <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
                           {getWhatsAppLink(a, salonName) && (
                             <a href={getWhatsAppLink(a, salonName)} target="_blank" rel="noopener noreferrer" className="vellora-icon-btn" style={{ ...iconBtn, color: "#25D366" }} title="WhatsApp"><MessageCircle size={16} /></a>
+                          )}
+                          {a.status === "payment done" && getFeedbackWhatsAppLink(a, salonName) && (
+                            <a href={getFeedbackWhatsAppLink(a, salonName)} target="_blank" rel="noopener noreferrer" className="vellora-icon-btn" style={{ ...iconBtn, color: C.gold }} title="Request Feedback"><Sparkles size={16} /></a>
                           )}
                           {(paymentSettings?.qr_image_url || paymentSettings?.upi_id) && (
                             <button className="vellora-icon-btn" style={{ ...iconBtn, color: C.gold }} title="Collect Payment" onClick={() => setCollectPaymentAppt(a)}><Wallet size={16} /></button>
@@ -1623,17 +1681,24 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paym
 
 /* ================= MARKETING ================= */
 const MARKETING_TEMPLATES = [
-  { id: "t1", image: "/marketing/post1.jpg", rotate: -2, size: "large" },
-  { id: "t2", image: "/marketing/post2.jpg", rotate: 2, size: "medium" },
-  { id: "t3", image: "/marketing/post3.jpg", rotate: -1.5, size: "small" },
-  { id: "t4", image: "/marketing/post4.jpg", rotate: 2.5, size: "medium" },
-  { id: "t5", image: "/marketing/post5.jpg", rotate: -2, size: "medium" },
-  { id: "t6", image: "/marketing/post6.jpg", rotate: -1.5, size: "medium" },
-  
+  { id: "t1", image: "/marketing/post1.jpg", rotate: -2, size: "large", editable: true,
+    namePos: { x: 0.5, y: 0.45, maxWidth: 0.5 }, offerPos: { x: 0.5, y: 0.85, maxWidth: 0.75 } },
+  { id: "t2", image: "/marketing/post2.jpg", rotate: 2, size: "medium", editable: true,
+    namePos: { x: 0.5, y: 0.45, maxWidth: 0.5 }, offerPos: { x: 0.5, y: 0.85, maxWidth: 0.75 } },
+  { id: "t3", image: "/marketing/post3.jpg", rotate: -1.5, size: "small", editable: true,
+    namePos: { x: 0.5, y: 0.45, maxWidth: 0.5 }, offerPos: { x: 0.5, y: 0.85, maxWidth: 0.75 } },
+  { id: "t4", image: "/marketing/post4.jpg", rotate: 2.5, size: "medium", editable: true,
+    namePos: { x: 0.5, y: 0.45, maxWidth: 0.5 }, offerPos: { x: 0.5, y: 0.85, maxWidth: 0.75 } },
+  { id: "t5", image: "/marketing/post5.jpg", rotate: -2, size: "medium", editable: true,
+    namePos: { x: 0.5, y: 0.45, maxWidth: 0.5 }, offerPos: { x: 0.5, y: 0.85, maxWidth: 0.75 } },
+  { id: "t6", image: "/marketing/post6.jpg", rotate: -1.5, size: "medium", editable: true,
+    namePos: { x: 0.5, y: 0.45, maxWidth: 0.5 }, offerPos: { x: 0.5, y: 0.85, maxWidth: 0.75 } },
 ];
 
 function Marketing({ user, isMobile }) {
   const [processing, setProcessing] = useState(null);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [offerText, setOfferText] = useState("");
 
   const sizeMap = {
     large: { width: isMobile ? "100%" : 340 },
@@ -1644,7 +1709,10 @@ function Marketing({ user, isMobile }) {
   const salonName = user.salonName || "Your Salon";
   const collabText = `Salon Chair Wala × ${salonName}`;
 
-  const generateAndShare = async (imagePath, id) => {
+  const generateAndShare = async (template, customOfferText) => {
+    const t = template;
+    const imagePath = t.image;
+    const id = t.id;
     setProcessing(id);
     try {
       const img = new Image();
@@ -1671,14 +1739,42 @@ function Marketing({ user, isMobile }) {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, img.height - gradientHeight, img.width, gradientHeight);
 
-      // Collab text likho
-      const fontSize = Math.max(18, Math.round(img.width * 0.032));
-      ctx.font = `600 ${fontSize}px Georgia, serif`;
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      ctx.shadowColor = "rgba(0,0,0,0.5)";
-      ctx.shadowBlur = 8;
-      ctx.fillText(collabText, img.width / 2, img.height - gradientHeight * 0.32);
+      // Fitted text draw karne ka helper — box me fit karne ke liye font-size auto-shrink karta hai
+      const drawFittedText = (text, xRatio, yRatio, maxWidthRatio, baseFontSize, weight, color, shadowBlurVal) => {
+        const x = img.width * xRatio;
+        const y = img.height * yRatio;
+        const maxWidth = img.width * maxWidthRatio;
+        let fontSize = baseFontSize;
+        ctx.textAlign = "center";
+        ctx.fillStyle = color;
+        ctx.shadowColor = "rgba(0,0,0,0.55)";
+        ctx.shadowBlur = shadowBlurVal;
+        do {
+          ctx.font = `${weight} ${fontSize}px Georgia, serif`;
+          if (ctx.measureText(text).width <= maxWidth) break;
+          fontSize -= 1;
+        } while (fontSize > 10);
+        ctx.fillText(text, x, y);
+      };
+
+      const namePos = t.namePos || { x: 0.5, y: 0.45, maxWidth: 0.5 };
+      const offerPos = t.offerPos || { x: 0.5, y: 0.85, maxWidth: 0.75 };
+
+      // Salon Name — logo/empty box ki jagah pe
+      drawFittedText(
+        salonName,
+        namePos.x, namePos.y, namePos.maxWidth,
+        Math.round(img.width * 0.05), "700", "#ffffff", 10
+      );
+
+      // Offer Text — agar user ne diya hai
+      if (customOfferText && customOfferText.trim()) {
+        drawFittedText(
+          customOfferText.trim(),
+          offerPos.x, offerPos.y, offerPos.maxWidth,
+          Math.round(img.width * 0.045), "700", "#ffffff", 10
+        );
+      }
 
       // Canvas ko image file mein convert karo
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
@@ -1720,7 +1816,7 @@ function Marketing({ user, isMobile }) {
         {MARKETING_TEMPLATES.map((t, idx) => (
           <div
             key={t.id}
-            onClick={() => generateAndShare(t.image, t.id)}
+            onClick={() => setEditingTemplate(t)}
             style={{
               ...sizeMap[t.size],
               transform: isMobile ? "none" : `rotate(${t.rotate}deg)`,
@@ -1755,6 +1851,41 @@ function Marketing({ user, isMobile }) {
           </div>
         ))}
       </div>
+            {editingTemplate && (
+        <div onClick={() => setEditingTemplate(null)} style={{ position: "fixed", inset: 0, background: "rgba(26,18,28,0.65)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ ...card, width: "100%", maxWidth: 420 }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: C.ink }}>Add Your Offer</h3>
+            <Field label="Offer Text">
+              <input
+                className="vellora-input"
+                value={offerText}
+                onChange={(e) => setOfferText(e.target.value)}
+                placeholder="e.g. Diwali Special — Flat 30% Off"
+                style={inputStyle}
+              />
+            </Field>
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button
+                className="vellora-btn-ghost"
+                style={{ ...btnGhost, flex: 1, justifyContent: "center" }}
+                onClick={async () => {
+                  await generateAndShare(editingTemplate, offerText);
+                  setEditingTemplate(null);
+                  setOfferText("");
+                }}
+              >
+                Generate & Share
+              </button>
+              <button
+                onClick={() => { setEditingTemplate(null); setOfferText(""); }}
+                style={{ ...btnGhost, flex: 1, justifyContent: "center", background: C.card, color: C.plum, border: `1px solid ${C.line}`, boxShadow: "none" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1857,6 +1988,192 @@ function Accounts({ salaries, setSalaries, employees, setLoadError, isMobile }) 
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+
+/* ================= ATTENDANCE ================= */
+function Attendance({ employees, setLoadError, isMobile }) {
+  const [view, setView] = useState("daily"); // "daily" | "monthly"
+  const [date, setDate] = useState(todayISO());
+  const [records, setRecords] = useState({}); // employee_id -> {id, status, note}
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(null); // employee_id currently saving
+
+  const [month, setMonth] = useState(todayISO().slice(0, 7)); // "YYYY-MM"
+  const [summary, setSummary] = useState({}); // employee_id -> {present, absent, half_day, leave}
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  const loadDaily = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.getAttendance(date);
+      const map = {};
+      (res.attendance || []).forEach((r) => {
+        map[r.employee_id] = { id: r.id, status: r.status, note: r.note };
+      });
+      setRecords(map);
+    } catch (err) {
+      setLoadError("Attendance load nahi ho payi. " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [date, setLoadError]);
+
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const res = await api.getAttendanceSummary(month);
+      const map = {};
+      (res.summary || []).forEach((row) => {
+        if (!map[row.employee_id]) map[row.employee_id] = { present: 0, absent: 0, half_day: 0, leave: 0 };
+        map[row.employee_id][row.status] = row.count;
+      });
+      setSummary(map);
+    } catch (err) {
+      setLoadError("Monthly summary load nahi ho payi. " + err.message);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [month, setLoadError]);
+
+  useEffect(() => { if (view === "daily") loadDaily(); }, [view, loadDaily]);
+  useEffect(() => { if (view === "monthly") loadSummary(); }, [view, loadSummary]);
+
+  const mark = async (employeeId, status) => {
+    setSaving(employeeId);
+    const prev = records[employeeId];
+    setRecords({ ...records, [employeeId]: { ...prev, status } });
+    try {
+      await api.markAttendance({ employeeId, date, status });
+    } catch (err) {
+      setRecords({ ...records, [employeeId]: prev });
+      setLoadError("Attendance save nahi hui. " + err.message);
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const statusOptions = [
+    { value: "present", label: "Present", color: C.green, bg: C.greenBg },
+    { value: "absent", label: "Absent", color: C.red, bg: C.redBg },
+    { value: "half_day", label: "Half Day", color: C.gold, bg: C.goldBg },
+    { value: "leave", label: "Leave", color: C.sub, bg: C.line },
+  ];
+
+  return (
+    <div style={{ animation: "fadeIn 0.3s ease-out" }}>
+      <PageHeader
+        title="Staff Attendance"
+        sub="Mark daily attendance and track monthly presence."
+        action={
+          <div style={{ display: "flex", gap: 8, background: C.card, padding: 4, borderRadius: 12, border: `1px solid ${C.line}` }}>
+            <button
+              className="vellora-btn-ghost"
+              style={{ ...btnGhost, background: view === "daily" ? C.plum : "transparent", color: view === "daily" ? "#fff" : C.sub, boxShadow: "none" }}
+              onClick={() => setView("daily")}
+            >Daily</button>
+            <button
+              className="vellora-btn-ghost"
+              style={{ ...btnGhost, background: view === "monthly" ? C.plum : "transparent", color: view === "monthly" ? "#fff" : C.sub, boxShadow: "none" }}
+              onClick={() => setView("monthly")}
+            >Monthly Summary</button>
+          </div>
+        }
+      />
+
+      {view === "daily" && (
+        <>
+          <div className="vellora-card" style={{ ...card, marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: C.ink }}>Date:</span>
+            <input className="vellora-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...inputStyle, width: isMobile ? "100%" : 220 }} />
+            {loading && <Loader2 className="spinner" size={16} color={C.plum} />}
+          </div>
+
+          {employees.length === 0 && (
+            <div style={{ padding: "32px 24px", textAlign: "center", background: "#FCFAF8", borderRadius: 16, border: `1px dashed ${C.line}` }}>
+              <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>Pehle Team tab se staff add karo.</p>
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {employees.map((emp) => {
+              const rec = records[emp.id];
+              return (
+                <div key={emp.id} className="vellora-card" style={{ ...card, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{emp.name}</div>
+                    <div style={{ fontSize: 12.5, color: C.sub }}>{emp.position || "Staff"}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {statusOptions.map((opt) => {
+                      const active = rec?.status === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          className="vellora-btn-ghost"
+                          disabled={saving === emp.id}
+                          onClick={() => mark(emp.id, opt.value)}
+                          style={{
+                            ...btnGhost,
+                            padding: "7px 14px",
+                            fontSize: 12.5,
+                            boxShadow: "none",
+                            background: active ? opt.color : opt.bg,
+                            color: active ? "#fff" : opt.color,
+                            opacity: saving === emp.id ? 0.6 : 1,
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {view === "monthly" && (
+        <>
+          <div className="vellora-card" style={{ ...card, marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: C.ink }}>Month:</span>
+            <input className="vellora-input" type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ ...inputStyle, width: isMobile ? "100%" : 220 }} />
+            {summaryLoading && <Loader2 className="spinner" size={16} color={C.plum} />}
+          </div>
+
+          <div className="vellora-card" style={{ ...card, padding: 0, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ background: C.goldLight, textAlign: "left" }}>
+                  <th style={{ padding: "12px 20px" }}>Staff</th>
+                  <th style={{ padding: "12px 20px", color: C.green }}>Present</th>
+                  <th style={{ padding: "12px 20px", color: C.red }}>Absent</th>
+                  <th style={{ padding: "12px 20px", color: C.gold }}>Half Day</th>
+                  <th style={{ padding: "12px 20px", color: C.sub }}>Leave</th>
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((emp) => {
+                  const s = summary[emp.id] || { present: 0, absent: 0, half_day: 0, leave: 0 };
+                  return (
+                    <tr key={emp.id} style={{ borderTop: `1px solid ${C.line}` }}>
+                      <td style={{ padding: "12px 20px", fontWeight: 600, color: C.ink }}>{emp.name}</td>
+                      <td style={{ padding: "12px 20px" }}>{s.present}</td>
+                      <td style={{ padding: "12px 20px" }}>{s.absent}</td>
+                      <td style={{ padding: "12px 20px" }}>{s.half_day}</td>
+                      <td style={{ padding: "12px 20px" }}>{s.leave}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -2038,6 +2355,7 @@ function Team({ employees, setEmployees, inventory, setInventory, setLoadError, 
 
 function SuperAdminPanel({ token }) {
   const [salons, setSalons] = useState([]);
+  const [stats, setStats] = useState({ totalSalons: 0, activeSalons: 0, inactiveSalons: 0 }); // NAYA
   const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -2049,7 +2367,10 @@ function SuperAdminPanel({ token }) {
         fetch("/api/superadmin", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
         fetch("/api/superadmin/generate-code", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       ]);
-      if (salonRes.success) setSalons(salonRes.salons);
+      if (salonRes.success) {
+        setSalons(salonRes.salons);
+        setStats(salonRes.stats || { totalSalons: salonRes.salons.length, activeSalons: 0, inactiveSalons: 0 }); // NAYA
+      }
       else setError(salonRes.error);
       if (codeRes.success) setCodes(codeRes.codes);
     } catch {
@@ -2104,6 +2425,30 @@ function SuperAdminPanel({ token }) {
 
       {!loading && (
         <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 26 }}>
+            <div className="vellora-card" style={card}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: C.plum, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <Users size={20} color="#fff" />
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{stats.totalSalons}</div>
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>Total salons</div>
+            </div>
+            <div className="vellora-card" style={card}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <Users size={20} color="#fff" />
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice, color: C.green }}>{stats.activeSalons}</div>
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>Active (last 30 days)</div>
+            </div>
+            <div className="vellora-card" style={card}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: C.red, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <Users size={20} color="#fff" />
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice, color: C.red }}>{stats.inactiveSalons}</div>
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>Inactive</div>
+            </div>
+          </div>
+
           <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 32 }}>
             {salons.length === 0 ? (
               <p style={{ color: C.sub, fontSize: 14, padding: 32, textAlign: "center", background: C.card, borderRadius: 16, border: `1px dashed ${C.line}` }}>No registered salons found in the system.</p>
@@ -2113,7 +2458,13 @@ function SuperAdminPanel({ token }) {
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
                       <div style={{ fontWeight: 600, fontSize: 18, color: C.ink, fontFamily: fontVoice }}>{s.name}</div>
-                      <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", padding: "3px 8px", borderRadius: 12, backgroundColor: C.goldBg, color: "#997340" }}>Active</span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, textTransform: "uppercase", padding: "3px 8px", borderRadius: 12,
+                        backgroundColor: s.is_active ? C.goldBg : C.redBg,
+                        color: s.is_active ? "#997340" : C.red
+                      }}>
+                        {s.is_active ? "Active" : "Inactive"}
+                      </span>
                     </div>
                     <div style={{ fontSize: 13, color: C.sub }}>System Entry: {s.created_at?.toString().slice(0, 10)}</div>
                   </div>

@@ -9,6 +9,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  flags: ['FOUND_ROWS'],   // <-- ye add karo
 });
 
 export default pool;

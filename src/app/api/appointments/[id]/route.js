@@ -10,13 +10,20 @@ export async function PUT(req, { params }) {
 
   try {
     const { id } = await params;
-    const { status } = await req.json();
+    const { status, paymentMode } = await req.json();
+    // Sirf 'cash' ya 'online' allow karo. Agar bheja hi nahi to column ko touch mat karo (purana value rahega)
+    const mode = paymentMode === 'cash' || paymentMode === 'online' ? paymentMode : undefined;
 
     // salon_id = ? bhi WHERE mein hai — koi doosre salon ki appointment edit nahi kar sakta, chahe ID pata bhi ho
-    const [result] = await pool.query(
-      'UPDATE appointments SET status = ? WHERE id = ? AND salon_id = ?',
-      [status, id, user.salonId]
-    );
+    const [result] = mode === undefined
+      ? await pool.query(
+          'UPDATE appointments SET status = ? WHERE id = ? AND salon_id = ?',
+          [status, id, user.salonId]
+        )
+      : await pool.query(
+          'UPDATE appointments SET status = ?, payment_mode = ? WHERE id = ? AND salon_id = ?',
+          [status, mode, id, user.salonId]
+        );
 
     if (result.affectedRows === 0) {
       return NextResponse.json({ success: false, error: 'Appointment nahi mili.' }, { status: 404 });
