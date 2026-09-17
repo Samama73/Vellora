@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+vellora-key2.jks
+*.jks
+*.keystore
+key.properties
