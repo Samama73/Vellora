@@ -37,6 +37,48 @@ export async function GET(req) {
       [user.salonId]
     );
 
+        // Payment mode breakdown — period-wise: kitne customers cash, kitne online
+    const [modeRows] = await pool.query(
+      `SELECT DATE_FORMAT(date, ?) AS period,
+              COALESCE(NULLIF(payment_mode, ''), 'unknown') AS mode,
+              COUNT(*) AS customers,
+              SUM(price) AS revenue
+       FROM appointments
+       WHERE salon_id = ? AND status = 'payment done'
+       GROUP BY period, mode
+       ORDER BY period ASC`,
+      [dateFormat, user.salonId]
+    );
+
+    // Flat rows ko period-wise ek object mein badlo (frontend ke liye aasaan)
+    const breakdownMap = new Map();
+    for (const r of modeRows) {
+      if (!breakdownMap.has(r.period)) {
+        breakdownMap.set(r.period, {
+          period: r.period,
+          cashCustomers: 0, cashRevenue: 0,
+          onlineCustomers: 0, onlineRevenue: 0,
+          unknownCustomers: 0, unknownRevenue: 0,
+        });
+      }
+      const row = breakdownMap.get(r.period);
+      const customers = Number(r.customers) || 0;
+      const revenue = Number(r.revenue) || 0;
+      if (r.mode === 'cash') { row.cashCustomers += customers; row.cashRevenue += revenue; }
+      else if (r.mode === 'online') { row.onlineCustomers += customers; row.onlineRevenue += revenue; }
+      else { row.unknownCustomers += customers; row.unknownRevenue += revenue; }
+    }
+    const paymentBreakdown = [...breakdownMap.values()];
+
+    const paymentTotals = paymentBreakdown.reduce((acc, r) => ({
+      cashCustomers: acc.cashCustomers + r.cashCustomers,
+      cashRevenue: acc.cashRevenue + r.cashRevenue,
+      onlineCustomers: acc.onlineCustomers + r.onlineCustomers,
+      onlineRevenue: acc.onlineRevenue + r.onlineRevenue,
+      unknownCustomers: acc.unknownCustomers + r.unknownCustomers,
+      unknownRevenue: acc.unknownRevenue + r.unknownRevenue,
+    }), { cashCustomers: 0, cashRevenue: 0, onlineCustomers: 0, onlineRevenue: 0, unknownCustomers: 0, unknownRevenue: 0 });
+
     // Total summary
     const totalRevenue = revenueRows.reduce((sum, r) => sum + Number(r.revenue), 0);
     const totalAppointments = revenueRows.reduce((sum, r) => sum + Number(r.appointments), 0);
@@ -48,6 +90,8 @@ export async function GET(req) {
       totalAppointments,
       revenueTrend: revenueRows,
       employeePerformance: employeeRows,
+      paymentBreakdown,
+      paymentTotals,  
     });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

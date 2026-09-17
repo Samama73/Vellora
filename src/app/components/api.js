@@ -38,6 +38,7 @@ export const api = {
   updateSalonSettings: (payload) => request("/salon-settings", { method: "PUT", body: payload }),
   addAppointment: (payload) => request("/appointments", { method: "POST", body: payload }),
   updateAppointmentStatus: (id, status, paymentMode) => request(`/appointments/${id}`, { method: "PUT", body: { status, paymentMode } }),
+  updateAppointment: (id, payload) => request(`/appointments/${id}`, { method: "PUT", body: payload }),
   deleteAppointment: (id) => request(`/appointments/${id}`, { method: "DELETE" }),
 
   getInventory: () => request("/inventory"),

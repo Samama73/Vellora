@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Calendar, Users, Wallet, Package, Image as ImageIcon, LayoutDashboard,
-  LogOut, Plus, Trash2, Eye, EyeOff, Scissors, Check, Loader2, ChevronRight, MessageCircle, TrendingUp, Settings as SettingsIcon, Sparkles, Search, Bell
+  LogOut, Plus, Trash2, Eye, EyeOff, Scissors, Check, Loader2, ChevronRight, MessageCircle, TrendingUp, Settings as SettingsIcon, Sparkles, Search, Bell, Banknote, Smartphone, Pencil
+
 } from "lucide-react";
 import { api, saveSession, loadSession, clearSession } from "./api";
 
@@ -1292,6 +1293,7 @@ function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paym
   const [showForm, setShowForm] = useState(false);
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterPayMode, setFilterPayMode] = useState("all"); // all | cash | online
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ client: "", phone: "", service: "", date: todayISO(), time: "10:00", employee: "", price: "", paymentMode: "" });
 
@@ -1409,6 +1411,44 @@ Your thoughts help us serve you better. 💛
 
   const [collectPaymentAppt, setCollectPaymentAppt] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
+    const [editingAppt, setEditingAppt] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEdit = (a) => {
+    setEditingAppt(a);
+    setEditForm({
+      client: a.client || "",
+      phone: a.phone || "",
+      service: a.service || "",
+      date: a.date || todayISO(),
+      time: a.time || "10:00",
+      employee: a.employee || "",
+      price: a.price || "",
+      paymentMode: a.payment_mode || "",
+    });
+  };
+
+  const closeEdit = () => {
+    setEditingAppt(null);
+    setEditForm(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editForm.client || !editForm.service || !editForm.date || !editForm.time) return;
+    setEditSaving(true);
+    const prev = appts;
+    setAppts(appts.map((a) => (a.id === editingAppt.id ? { ...a, ...editForm, payment_mode: editForm.paymentMode } : a)));
+    try {
+      await api.updateAppointment(editingAppt.id, editForm);
+      closeEdit();
+    } catch (err) {
+      setAppts(prev);
+      setLoadError("Failed to update appointment. " + err.message);
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const STATUS_TABS = [
     ["all", "All"],
@@ -1421,6 +1461,7 @@ Your thoughts help us serve you better. 💛
   const filtered = [...appts]
     .filter((a) => !filterDate || a.date === filterDate)
     .filter((a) => filterStatus === "all" || a.status === filterStatus)
+    .filter((a) => filterPayMode === "all" || a.payment_mode === filterPayMode)
     .sort((a, b) => b.date.localeCompare(a.date) || (a.time || "").localeCompare(b.time || ""));
 
   return (
@@ -1466,7 +1507,12 @@ Your thoughts help us serve you better. 💛
               }}>{label}</button>
             ))}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <select className="vellora-input" value={filterPayMode} onChange={(e) => setFilterPayMode(e.target.value)} style={{ ...inputStyle, width: "auto", padding: "8px 12px" }}>
+              <option value="all">All payments</option>
+              <option value="cash">Cash</option>
+              <option value="online">Online</option>
+            </select>
             <input type="date" className="vellora-input" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} style={{ ...inputStyle, width: "auto", padding: "8px 12px" }} />
             {filterDate && (
               <button onClick={() => setFilterDate("")} style={{ background: "none", border: "none", color: C.sub, fontSize: 12.5, cursor: "pointer", textDecoration: "underline" }}>Clear</button>
@@ -1522,6 +1568,7 @@ Your thoughts help us serve you better. 💛
                     {(paymentSettings?.qr_image_url || paymentSettings?.upi_id) && (
                       <button className="vellora-icon-btn" style={{ ...iconBtn, color: C.gold }} onClick={() => setCollectPaymentAppt(a)}><Wallet size={17} /></button>
                     )}
+                    <button className="vellora-icon-btn" style={iconBtn} onClick={() => openEdit(a)}><Pencil size={17} /></button>
                     <button className="vellora-icon-btn" style={iconBtn} onClick={() => remove(a.id)}><Trash2 size={17} /></button>
                   </div>
                 </div>
@@ -1599,6 +1646,7 @@ Your thoughts help us serve you better. 💛
                           {(paymentSettings?.qr_image_url || paymentSettings?.upi_id) && (
                             <button className="vellora-icon-btn" style={{ ...iconBtn, color: C.gold }} title="Collect Payment" onClick={() => setCollectPaymentAppt(a)}><Wallet size={16} /></button>
                           )}
+                          <button className="vellora-icon-btn" style={iconBtn} title="Edit" onClick={() => openEdit(a)}><Pencil size={16} /></button>
                           <button className="vellora-icon-btn" style={iconBtn} title="Delete" onClick={() => remove(a.id)}><Trash2 size={16} /></button>
                         </div>
                       </td>
@@ -1671,6 +1719,47 @@ Your thoughts help us serve you better. 💛
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.green, display: "inline-block", flexShrink: 0 }} />
                 Ask the client to scan or copy this to pay
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingAppt && editForm && (
+        <div onClick={closeEdit} style={{ position: "fixed", inset: 0, background: "rgba(26,18,28,0.65)", backdropFilter: "blur(2px)", zIndex: 100, display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? 0 : 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            ...card,
+            width: "100%",
+            maxWidth: isMobile ? "100%" : 480,
+            maxHeight: isMobile ? "90vh" : "85vh",
+            overflowY: "auto",
+            borderRadius: isMobile ? "28px 28px 0 0" : 22,
+            padding: isMobile ? "20px 20px calc(24px + env(safe-area-inset-bottom))" : "28px",
+          }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 17, fontWeight: 600, color: C.ink }}>Edit Appointment</h3>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
+              <input className="vellora-input" placeholder="Client Name" value={editForm.client} onChange={(e) => setEditForm({ ...editForm, client: e.target.value })} style={inputStyle} />
+              <input className="vellora-input" placeholder="Contact Number" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputStyle} />
+              <input className="vellora-input" placeholder="Service" value={editForm.service} onChange={(e) => setEditForm({ ...editForm, service: e.target.value })} style={inputStyle} />
+              <input className="vellora-input" placeholder="Assigned Staff (Optional)" value={editForm.employee} onChange={(e) => setEditForm({ ...editForm, employee: e.target.value })} style={inputStyle} />
+              <input className="vellora-input" type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} style={inputStyle} />
+              <input className="vellora-input" type="time" value={editForm.time} onChange={(e) => setEditForm({ ...editForm, time: e.target.value })} style={inputStyle} />
+              <input className="vellora-input" placeholder="Price (₹)" type="number" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} style={inputStyle} />
+              <select className="vellora-input" value={editForm.paymentMode} onChange={(e) => setEditForm({ ...editForm, paymentMode: e.target.value })} style={inputStyle}>
+                <option value="">Payment Mode</option>
+                {PAYMENT_MODES.map((m) => <option key={m} value={m}>{m.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
+              </select>
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              <button className="vellora-btn-ghost" style={{ ...btnGhost, flex: 1, justifyContent: "center", opacity: editSaving ? 0.7 : 1 }} onClick={saveEdit} disabled={editSaving}>
+                {editSaving ? <Loader2 className="spinner" size={16} /> : <Check size={16} />}
+                {editSaving ? "Saving..." : "Save Changes"}
+              </button>
+              <button
+                onClick={closeEdit}
+                style={{ ...btnGhost, flex: 1, justifyContent: "center", background: C.card, color: C.plum, border: `1px solid ${C.line}`, boxShadow: "none" }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
@@ -2514,9 +2603,12 @@ function SuperAdminPanel({ token }) {
   );
 }
 
+const PAY_FILTERS = [["all", "All"], ["cash", "Cash"], ["online", "Online"]];
+
 /* ================= REPORTS ================= */
 function Reports({ setLoadError }) {
   const [period, setPeriod] = useState("month");
+  const [payMode, setPayMode] = useState("all"); // all | cash | online
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -2529,6 +2621,26 @@ function Reports({ setLoadError }) {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [period, setLoadError]);
+
+    const breakdown = data?.paymentBreakdown || [];
+  const payTotals = data?.paymentTotals || { cashCustomers: 0, cashRevenue: 0, onlineCustomers: 0, onlineRevenue: 0, unknownCustomers: 0, unknownRevenue: 0 };
+
+  // Filter ke hisaab se cards aur chart ka data nikaalo
+  let shownRevenue = data?.totalRevenue || 0;
+  let shownCustomers = data?.totalAppointments || 0;
+  let chartRows = data?.revenueTrend || [];
+
+  if (payMode === "cash") {
+    shownRevenue = payTotals.cashRevenue;
+    shownCustomers = payTotals.cashCustomers;
+    chartRows = breakdown.map((r) => ({ period: r.period, revenue: r.cashRevenue, appointments: r.cashCustomers })).filter((r) => r.appointments > 0);
+  } else if (payMode === "online") {
+    shownRevenue = payTotals.onlineRevenue;
+    shownCustomers = payTotals.onlineCustomers;
+    chartRows = breakdown.map((r) => ({ period: r.period, revenue: r.onlineRevenue, appointments: r.onlineCustomers })).filter((r) => r.appointments > 0);
+  }
+
+  const payLabel = payMode === "all" ? "" : payMode === "cash" ? " (cash)" : " (online)";
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
@@ -2551,6 +2663,20 @@ function Reports({ setLoadError }) {
         </div>
       )}
 
+            {/* Payment mode filter */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
+        <span style={{ fontSize: 12.5, color: C.sub }}>Payment mode</span>
+        <div style={{ display: "flex", gap: 6, background: "#F2ECE7", padding: 4, borderRadius: 14 }}>
+          {PAY_FILTERS.map(([m, label]) => (
+            <button key={m} onClick={() => setPayMode(m)} style={{
+              padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 12.5,
+              fontWeight: 500, fontFamily: fontSans, background: payMode === m ? C.card : "transparent",
+              color: payMode === m ? C.plum : C.sub, boxShadow: payMode === m ? "0 4px 10px -4px rgba(43,27,46,0.25)" : "none",
+            }}>{label}</button>
+          ))}
+        </div>
+      </div>
+
       {!loading && data && (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 26 }}>
@@ -2558,21 +2684,78 @@ function Reports({ setLoadError }) {
               <div style={{ width: 42, height: 42, borderRadius: 12, background: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
                 <Wallet size={20} color="#fff" />
               </div>
-              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{money(data.totalRevenue)}</div>
+              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{money(shownRevenue)}</div>
               <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>Total revenue</div>
             </div>
             <div className="vellora-card" style={card}>
               <div style={{ width: 42, height: 42, borderRadius: 12, background: "#8B5CF6", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
                 <Calendar size={20} color="#fff" />
               </div>
-              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{data.totalAppointments}</div>
-              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>Paid appointments</div>
+              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{shownCustomers}</div>
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>{`Paid customers${payLabel}`}</div>
             </div>
           </div>
 
           <div className="vellora-card" style={{ ...card, marginBottom: 20 }}>
             <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>Revenue trend</h3>
-            <RevenueBarChart rows={data.revenueTrend} />
+            <RevenueBarChart rows={chartRows} />
+          </div>
+
+          <div className="vellora-card" style={{ ...card, marginBottom: 20 }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>Cash vs Online</h3>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 18 }}>
+              {[
+                { label: "Cash", icon: Banknote, bg: "#10B981", c: payTotals.cashCustomers, r: payTotals.cashRevenue },
+                { label: "Online", icon: Smartphone, bg: "#3B82F6", c: payTotals.onlineCustomers, r: payTotals.onlineRevenue },
+              ].map(({ label, icon: Icon, bg, c, r }) => (
+                <div key={label} style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 9, background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Icon size={15} color="#fff" />
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>{label}</span>
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 600, fontFamily: fontVoice }}>{c} customers</div>
+                  <div style={{ fontSize: 12.5, color: C.sub, marginTop: 3 }}>{money(r)} collected</div>
+                </div>
+              ))}
+            </div>
+
+            {payTotals.unknownCustomers > 0 && (
+              <div style={{ fontSize: 12, color: C.sub, marginBottom: 14 }}>
+                {payTotals.unknownCustomers} purane paid appointments mein payment mode record nahi hua ({money(payTotals.unknownRevenue)}).
+              </div>
+            )}
+
+            {breakdown.length === 0 ? (
+              <EmptyState icon={Wallet} title="No payments yet" description="Appointments ko paid mark karne ke baad yahan cash/online split dikhega." />
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ color: C.sub, textAlign: "left" }}>
+                      <th style={{ padding: "8px 6px", fontWeight: 500 }}>Period</th>
+                      <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Cash</th>
+                      <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Online</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {breakdown.map((r) => (
+                      <tr key={r.period} style={{ borderTop: `1px solid ${C.line}` }}>
+                        <td style={{ padding: "10px 6px", fontWeight: 500 }}>{r.period}</td>
+                        <td style={{ padding: "10px 6px", textAlign: "right" }}>
+                          {r.cashCustomers} <span style={{ color: C.sub }}>· {money(r.cashRevenue)}</span>
+                        </td>
+                        <td style={{ padding: "10px 6px", textAlign: "right" }}>
+                          {r.onlineCustomers} <span style={{ color: C.sub }}>· {money(r.onlineRevenue)}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <div className="vellora-card" style={card}>

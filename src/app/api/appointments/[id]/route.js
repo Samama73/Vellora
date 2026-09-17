@@ -2,15 +2,38 @@ import pool from '@/lib/db';
 import { getUserFromRequest } from '@/lib/getUser';
 import { NextResponse } from 'next/server';
 
-// PUT: status update karo (sirf apne salon ki appointment)
-// PUT: status update karo (sirf apne salon ki appointment)
+// PUT: status update karo, YA poori appointment edit karo (sirf apne salon ki appointment)
 export async function PUT(req, { params }) {
   const user = getUserFromRequest(req);
   if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
   try {
     const { id } = await params;
-    const { status, paymentMode } = await req.json();
+    const body = await req.json();
+    const { status, paymentMode, client, phone, service, employee, date, time, price } = body;
+
+    // Edit mode — jab client/service/date/time bheja gaya ho (full appointment edit form se)
+    const isEditMode = client !== undefined || service !== undefined || date !== undefined || time !== undefined;
+
+    if (isEditMode) {
+      if (!client || !service || !date || !time) {
+        return NextResponse.json({ success: false, error: 'Client, service, date, time zaroori hain.' }, { status: 400 });
+      }
+      const mode = paymentMode === 'cash' || paymentMode === 'online' ? paymentMode : null;
+
+      const [result] = await pool.query(
+        `UPDATE appointments
+         SET client = ?, phone = ?, service = ?, employee = ?, date = ?, time = ?, price = ?, payment_mode = ?
+         WHERE id = ? AND salon_id = ?`,
+        [client, phone || null, service, employee || null, date, time, price || 0, mode, id, user.salonId]
+      );
+
+      if (result.affectedRows === 0) {
+        return NextResponse.json({ success: false, error: 'Appointment nahi mili.' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true });
+    }
+
     // Sirf 'cash' ya 'online' allow karo. Agar bheja hi nahi to column ko touch mat karo (purana value rahega)
     const mode = paymentMode === 'cash' || paymentMode === 'online' ? paymentMode : undefined;
 
