@@ -303,7 +303,7 @@ function PageHeader({ title, sub, action }) {
   );
 }
 
-function SearchBar({ setTab }) {
+function SearchBar({ setTab, setFocusApptId }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
   const [open, setOpen] = useState(false);
@@ -337,8 +337,9 @@ function SearchBar({ setTab }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const goTo = (tabId) => {
+  const goTo = (tabId, apptId) => {
     setTab(tabId);
+    if (apptId) setFocusApptId(apptId);
     setOpen(false);
     setQuery("");
     setResults(null);
@@ -373,7 +374,7 @@ function SearchBar({ setTab }) {
             <div style={{ marginBottom: 6 }}>
               <div style={{ padding: "6px 10px", fontSize: 10.5, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: 0.5 }}>Appointments</div>
               {results.appointments.map((a) => (
-                <div key={a.id} onClick={() => goTo("appointments")} style={{ padding: "8px 10px", borderRadius: 8, cursor: "pointer" }}
+                <div key={a.id} onClick={() => goTo("appointments", a.id)} style={{ padding: "8px 10px", borderRadius: 8, cursor: "pointer" }}
                   onMouseEnter={(e) => e.currentTarget.style.background = C.goldLight}
                   onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{a.client}</div>
@@ -706,6 +707,7 @@ export default function SalonManager() {
   const [loadingData, setLoadingData] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [focusApptId, setFocusApptId] = useState(null); 
 
   const [appts, setAppts] = useState([]);
   const [inventory, setInventory] = useState([]);
@@ -964,7 +966,7 @@ export default function SalonManager() {
 
         {!isMobile && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, gap: 16 }}>
-            <SearchBar setTab={setTab} />
+            <SearchBar setTab={setTab} setFocusApptId={setFocusApptId} />
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.card, borderRadius: 999, padding: "5px 14px 5px 5px", boxShadow: "0 1px 3px rgba(43,27,46,0.08)" }}>
                 <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.gold, display: "flex", alignItems: "center", justifyContent: "center", color: C.plum, fontWeight: 700, fontSize: 12 }}>
@@ -991,7 +993,7 @@ export default function SalonManager() {
 
         <div key={tab} style={{ animation: "fadeIn 0.22s ease-out" }}>
           {tab === "dashboard" && <Dashboard appts={appts} inventory={inventory} employees={employees} isMobile={isMobile} setTab={setTab} />}
-          {tab === "appointments" && <Appointments appts={appts} setAppts={setAppts} setLoadError={setLoadError} isMobile={isMobile} salonName={user.salonName || "our salon"} paymentSettings={paymentSettings} />}
+          {tab === "appointments" && <Appointments appts={appts} setAppts={setAppts} setLoadError={setLoadError} isMobile={isMobile} salonName={user.salonName || "our salon"} paymentSettings={paymentSettings} focusApptId={focusApptId} setFocusApptId={setFocusApptId} />}
           {tab === "reports" && <Reports setLoadError={setLoadError} />}
           {tab === "customers" && <Customers setLoadError={setLoadError} isMobile={isMobile} />}
           {tab === "settings" && <PaymentSettings settings={paymentSettings} setPaymentSettings={setPaymentSettings} setLoadError={setLoadError} isMobile={isMobile} />}
@@ -1289,7 +1291,7 @@ const getStatusBadge = (status) => {
   return styles[status] || styles["not visited"];
 };
 
-function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paymentSettings }) {
+function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paymentSettings, focusApptId, setFocusApptId }) {
   const [showForm, setShowForm] = useState(false);
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -1449,6 +1451,15 @@ Your thoughts help us serve you better. 💛
       setEditSaving(false);
     }
   };
+
+    // Search se koi specific appointment click kiya gaya ho to seedha edit modal khol do
+  useEffect(() => {
+    if (focusApptId) {
+      const appt = appts.find((a) => a.id === focusApptId);
+      if (appt) openEdit(appt);
+      setFocusApptId(null); // consume kar liya, dobara trigger na ho
+    }
+  }, [focusApptId]);
 
   const STATUS_TABS = [
     ["all", "All"],
@@ -2611,6 +2622,8 @@ function Reports({ setLoadError }) {
   const [payMode, setPayMode] = useState("all"); // all | cash | online
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [incentiveEnabled, setIncentiveEnabled] = useState(false);
+  const [incentivePercent, setIncentivePercent] = useState(10);
 
   useEffect(() => {
     let cancelled = false;
@@ -2621,6 +2634,18 @@ function Reports({ setLoadError }) {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [period, setLoadError]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getSalonSettings()
+      .then((res) => {
+        if (cancelled) return;
+        setIncentiveEnabled(res.settings?.incentive_enabled ?? false);
+        setIncentivePercent(res.settings?.incentive_percent ?? 10);
+      })
+      .catch(() => {}); // incentive settings load na ho to bhi Reports normal chale
+    return () => { cancelled = true; };
+  }, []);
 
     const breakdown = data?.paymentBreakdown || [];
   const payTotals = data?.paymentTotals || { cashCustomers: 0, cashRevenue: 0, onlineCustomers: 0, onlineRevenue: 0, unknownCustomers: 0, unknownRevenue: 0 };
@@ -2762,9 +2787,19 @@ function Reports({ setLoadError }) {
             <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>Employee performance</h3>
             {data.employeePerformance.length === 0 && <EmptyState icon={Users} title="No data yet" description="Staff performance will appear here once appointments are completed and paid." />}
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {data.employeePerformance.map((e) => (
-                <EmployeeBar key={e.employee} employee={e} max={data.employeePerformance[0]?.revenue || 1} />
-              ))}
+              {data.employeePerformance.map((e) => {
+                const monthRevenue = data.employeePerformanceMonth?.find((m) => m.employee === e.employee)?.revenue || 0;
+                return (
+                  <EmployeeBar
+                    key={e.employee}
+                    employee={e}
+                    max={data.employeePerformance[0]?.revenue || 1}
+                    incentiveEnabled={incentiveEnabled}
+                    incentivePercent={incentivePercent}
+                    monthRevenue={monthRevenue}
+                  />
+                );
+              })}
             </div>
           </div>
         </>
@@ -2828,8 +2863,9 @@ function RevenueBarChart({ rows }) {
   );
 }
 
-function EmployeeBar({ employee, max }) {
+function EmployeeBar({ employee, max, incentiveEnabled, incentivePercent, monthRevenue }) {
   const pct = Math.min(100, (Number(employee.revenue) / max) * 100);
+  const incentiveAmount = (Number(monthRevenue || 0) * Number(incentivePercent || 0)) / 100;
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
@@ -2839,6 +2875,11 @@ function EmployeeBar({ employee, max }) {
       <div style={{ background: "#F2ECE7", borderRadius: 8, height: 8, overflow: "hidden" }}>
           <div style={{ width: `${pct}%`, height: "100%", background: C.plum, borderRadius: 8 }} />
       </div>
+      {incentiveEnabled && (
+        <div style={{ fontSize: 11.5, color: C.gold, fontWeight: 600, marginTop: 4 }}>
+          This month's incentive ({incentivePercent}%): {money(incentiveAmount)}
+        </div>
+      )}
     </div>
   );
 }
@@ -3151,12 +3192,57 @@ function Settings({ isMobile }) {
     allow_online_bookings: true,
     appointment_reminders: true,
     allow_cancellations: true,
-    require_customer_phone: true
+    require_customer_phone: true,
+    incentive_enabled: false,
+    incentive_percent: 10
   });
 
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
+
+    // Change Password modal ke liye state
+  const [showPwModal, setShowPwModal] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [showPwFields, setShowPwFields] = useState(false);
+
+  const closePwModal = () => {
+    setShowPwModal(false);
+    setPwForm({ current: "", next: "", confirm: "" });
+    setPwError("");
+    setPwSuccess("");
+  };
+
+  const submitPasswordChange = async () => {
+    setPwError("");
+    setPwSuccess("");
+    if (!pwForm.current || !pwForm.next || !pwForm.confirm) {
+      setPwError("Saare fields fill karo.");
+      return;
+    }
+    if (pwForm.next.length < 4) {
+      setPwError("New password kam se kam 4 characters ka hona chahiye.");
+      return;
+    }
+    if (pwForm.next !== pwForm.confirm) {
+      setPwError("New password aur confirm password match nahi kar rahe.");
+      return;
+    }
+    setPwSaving(true);
+    try {
+      const res = await api.changePassword(pwForm.current, pwForm.next);
+      setPwSuccess(res.message || "Password change ho gaya.");
+      setPwForm({ current: "", next: "", confirm: "" });
+      setTimeout(() => closePwModal(), 1500);
+    } catch (err) {
+      setPwError(err.message || "Password change nahi ho paya.");
+    } finally {
+      setPwSaving(false);
+    }
+  };
 
   useEffect(() => {
     api.getSalonSettings()
@@ -3175,7 +3261,9 @@ function Settings({ isMobile }) {
           allow_online_bookings: res.settings?.allow_online_bookings ?? true,
           appointment_reminders: res.settings?.appointment_reminders ?? true,
           allow_cancellations: res.settings?.allow_cancellations ?? true,
-          require_customer_phone: res.settings?.require_customer_phone ?? true
+          require_customer_phone: res.settings?.require_customer_phone ?? true,
+          incentive_enabled: res.settings?.incentive_enabled ?? false,
+          incentive_percent: res.settings?.incentive_percent ?? 10
         }));
       })
       .catch((err) => {
@@ -3210,7 +3298,9 @@ function Settings({ isMobile }) {
         allow_online_bookings: profile.allow_online_bookings,
         appointment_reminders: profile.appointment_reminders,
         allow_cancellations: profile.allow_cancellations,
-        require_customer_phone: profile.require_customer_phone
+        require_customer_phone: profile.require_customer_phone,
+        incentive_enabled: profile.incentive_enabled,
+        incentive_percent: profile.incentive_percent
       });
 
       setProfileSaved(true);
@@ -3450,6 +3540,83 @@ function Settings({ isMobile }) {
           </div>
 
 
+          {/* EMPLOYEE INCENTIVES */}
+          <div className="vellora-card" style={{ ...card, padding: 24 }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: C.ink }}>
+              Employee Incentives
+            </h3>
+
+            <p style={{ margin: "6px 0 20px", fontSize: 13.5, color: C.sub }}>
+              Reward staff with a percentage of the revenue they generate.
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 16,
+                paddingBottom: profile.incentive_enabled ? 16 : 0,
+                borderBottom: profile.incentive_enabled ? `1px solid ${C.line}` : "none"
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>
+                  Enable Employee Incentives
+                </div>
+                <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>
+                  Show a calculated incentive amount in Reports for each employee.
+                </div>
+              </div>
+
+              <div
+                onClick={() => updateProfile("incentive_enabled", !profile.incentive_enabled)}
+                style={{
+                  width: 42,
+                  height: 23,
+                  borderRadius: 20,
+                  background: profile.incentive_enabled ? C.gold : C.line,
+                  position: "relative",
+                  flexShrink: 0,
+                  cursor: "pointer",
+                  transition: "background 0.2s"
+                }}
+              >
+                <div
+                  style={{
+                    width: 17,
+                    height: 17,
+                    borderRadius: "50%",
+                    background: "#fff",
+                    position: "absolute",
+                    top: 3,
+                    left: profile.incentive_enabled ? 22 : 3,
+                    transition: "left 0.2s"
+                  }}
+                />
+              </div>
+            </div>
+
+            {profile.incentive_enabled && (
+              <div style={{ paddingTop: 16, maxWidth: 220 }}>
+                <label style={settingsLabel}>Incentive Percentage</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    style={{ ...settingsInput, paddingRight: 30 }}
+                    value={profile.incentive_percent}
+                    onChange={(e) => updateProfile("incentive_percent", e.target.value)}
+                  />
+                  <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: C.sub, fontSize: 13.5 }}>%</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+
           {/* NOTIFICATIONS */}
           <div className="vellora-card" style={{ ...card, padding: 24 }}>
             <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: C.ink }}>
@@ -3506,6 +3673,7 @@ function Settings({ isMobile }) {
 
             <button
               className="vellora-btn"
+              onClick={() => setShowPwModal(true)}
               style={{
                 background: "transparent",
                 border: `1px solid ${C.line}`,
@@ -3551,6 +3719,78 @@ function Settings({ isMobile }) {
 
         </div>
       </div>
+
+      {showPwModal && (
+        <div onClick={closePwModal} style={{ position: "fixed", inset: 0, background: "rgba(26,18,28,0.65)", backdropFilter: "blur(2px)", zIndex: 100, display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? 0 : 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            ...card,
+            width: "100%",
+            maxWidth: isMobile ? "100%" : 420,
+            borderRadius: isMobile ? "28px 28px 0 0" : 22,
+            padding: isMobile ? "20px 20px calc(24px + env(safe-area-inset-bottom))" : "28px",
+          }}>
+            <h3 style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 600, color: C.ink }}>Change Password</h3>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: C.sub }}>Apna current password verify karke naya password set karo.</p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <input
+                className="vellora-input"
+                type={showPwFields ? "text" : "password"}
+                placeholder="Current Password"
+                value={pwForm.current}
+                onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })}
+                style={inputStyle}
+              />
+              <input
+                className="vellora-input"
+                type={showPwFields ? "text" : "password"}
+                placeholder="New Password"
+                value={pwForm.next}
+                onChange={(e) => setPwForm({ ...pwForm, next: e.target.value })}
+                style={inputStyle}
+              />
+              <div style={{ position: "relative" }}>
+                <input
+                  className="vellora-input"
+                  type={showPwFields ? "text" : "password"}
+                  placeholder="Confirm New Password"
+                  value={pwForm.confirm}
+                  onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
+                  style={{ ...inputStyle, paddingRight: 44 }}
+                />
+                <button type="button" onClick={() => setShowPwFields((s) => !s)} style={{ position: "absolute", right: 12, top: 12, background: "none", border: "none", cursor: "pointer", color: C.sub }}>
+                  {showPwFields ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            {pwError && (
+              <div style={{ marginTop: 14, padding: "10px 14px", backgroundColor: C.redBg, borderLeft: `4px solid ${C.red}`, borderRadius: 8 }}>
+                <p style={{ color: C.red, fontSize: 13, margin: 0, fontWeight: 500 }}>{pwError}</p>
+              </div>
+            )}
+            {pwSuccess && (
+              <div style={{ marginTop: 14, padding: "10px 14px", backgroundColor: C.greenBg, borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                <Check size={15} color={C.green} />
+                <p style={{ color: C.green, fontSize: 13, margin: 0, fontWeight: 500 }}>{pwSuccess}</p>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              <button className="vellora-btn-ghost" style={{ ...btnGhost, flex: 1, justifyContent: "center", opacity: pwSaving ? 0.7 : 1 }} onClick={submitPasswordChange} disabled={pwSaving}>
+                {pwSaving ? <Loader2 className="spinner" size={16} /> : <Check size={16} />}
+                {pwSaving ? "Updating..." : "Update Password"}
+              </button>
+              <button
+                onClick={closePwModal}
+                style={{ ...btnGhost, flex: 1, justifyContent: "center", background: C.card, color: C.plum, border: `1px solid ${C.line}`, boxShadow: "none" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

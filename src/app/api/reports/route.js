@@ -27,13 +27,24 @@ export async function GET(req) {
       [dateFormat, user.salonId]
     );
 
-    // Employee performance — employee-wise grouped
+    // Employee performance — employee-wise grouped, SIRF selected period (day/month/year) ka
     const [employeeRows] = await pool.query(
       `SELECT employee, SUM(price) AS revenue, COUNT(*) AS appointments
        FROM appointments
        WHERE salon_id = ? AND status = 'payment done' AND employee IS NOT NULL AND employee != ''
+         AND DATE_FORMAT(date, ?) = DATE_FORMAT(CURDATE(), ?)
        GROUP BY employee
        ORDER BY revenue DESC`,
+      [user.salonId, dateFormat, dateFormat]
+    );
+
+    // Employee performance — SIRF current calendar month (incentive hamesha monthly hota hai, period selector se independent)
+    const [employeeMonthRows] = await pool.query(
+      `SELECT employee, SUM(price) AS revenue
+       FROM appointments
+       WHERE salon_id = ? AND status = 'payment done' AND employee IS NOT NULL AND employee != ''
+         AND DATE_FORMAT(date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')
+       GROUP BY employee`,
       [user.salonId]
     );
 
@@ -90,6 +101,7 @@ export async function GET(req) {
       totalAppointments,
       revenueTrend: revenueRows,
       employeePerformance: employeeRows,
+      employeePerformanceMonth: employeeMonthRows,
       paymentBreakdown,
       paymentTotals,  
     });

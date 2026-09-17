@@ -14,7 +14,8 @@ export async function GET(req) {
               TIME_FORMAT(opening_time, '%H:%i') AS opening_time, 
               TIME_FORMAT(closing_time, '%H:%i') AS closing_time,
               allow_online_bookings, appointment_reminders, 
-              allow_cancellations, require_customer_phone
+              allow_cancellations, require_customer_phone,
+              incentive_enabled, incentive_percent
        FROM salons WHERE id = ?`,
       [user.salonId]
     );
@@ -34,7 +35,8 @@ export async function PUT(req) {
       salon_name, owner_name, phone, email, address,
       currency, timezone, opening_time, closing_time,
       allow_online_bookings, appointment_reminders,
-      allow_cancellations, require_customer_phone
+      allow_cancellations, require_customer_phone,
+      incentive_enabled, incentive_percent
     } = await req.json();
 
     await pool.query(
@@ -42,12 +44,14 @@ export async function PUT(req) {
        SET name = ?, owner_name = ?, phone = ?, email = ?, address = ?, 
            currency = ?, timezone = ?, opening_time = ?, closing_time = ?,
            allow_online_bookings = ?, appointment_reminders = ?,
-           allow_cancellations = ?, require_customer_phone = ?
+           allow_cancellations = ?, require_customer_phone = ?,
+           incentive_enabled = ?, incentive_percent = ?
        WHERE id = ?`,
       [salon_name || null, owner_name || null, phone || null, email || null, address || null,
        currency || 'INR', timezone || 'Asia/Kolkata', opening_time || '10:00', closing_time || '20:00',
        allow_online_bookings ?? true, appointment_reminders ?? true,
        allow_cancellations ?? true, require_customer_phone ?? true,
+       incentive_enabled ?? false, incentive_percent ?? 10,
        user.salonId]
     );
 
