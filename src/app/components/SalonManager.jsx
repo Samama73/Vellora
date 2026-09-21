@@ -1034,7 +1034,7 @@ function Dashboard({ appts, inventory, employees, isMobile, setTab }) {
 
   const stats = [
     { label: "Today's Appointments", value: todayCount, icon: Calendar, target: "appointments", iconBg: "#8B5CF6" },
-    { label: "Monthly Revenue", value: money(monthRevenue), icon: Wallet, target: "accounts", iconBg: "#F59E0B" },
+    { label: "Monthly Revenue", value: money(monthRevenue), icon: Wallet, target: "reports", iconBg: "#F59E0B" },
     { label: "Active Staff", value: employees.length, icon: Users, target: "team", iconBg: "#10B981" },
     { label: "Items Low in Stock", value: lowStock.length, icon: Package, target: "team", iconBg: "#EC4899" },
   ];
@@ -1799,6 +1799,8 @@ function Marketing({ user, isMobile }) {
   const [processing, setProcessing] = useState(null);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [offerText, setOfferText] = useState("");
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState(null);
 
   const sizeMap = {
     large: { width: isMobile ? "100%" : 340 },
@@ -1901,6 +1903,48 @@ function Marketing({ user, isMobile }) {
     setProcessing(null);
   };
 
+  const handleUploadedFile = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setUploadedFile(file);
+      setUploadedPreviewUrl(URL.createObjectURL(file));
+    }
+    e.target.value = ""; // reset input taaki same file dobara select ho sake
+  };
+
+  const closeUploadedPreview = () => {
+    if (uploadedPreviewUrl) URL.revokeObjectURL(uploadedPreviewUrl);
+    setUploadedFile(null);
+    setUploadedPreviewUrl(null);
+  };
+
+  // Ye function seedha button-click se hi call hoga — isliye share() ka user-gesture rule pura hoga
+  const handleShareUploaded = async () => {
+    if (!uploadedFile) return;
+    const shareFile = new File([uploadedFile], `${salonName.replace(/\s+/g, "-")}-poster.jpg`, { type: uploadedFile.type });
+    try {
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [shareFile] })) {
+        await navigator.share({
+          files: [shareFile],
+          title: `${salonName} Offer`,
+          text: `Check out ${salonName}!`,
+        });
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") console.error("Share fail hua:", err);
+    }
+  };
+
+  const handleDownloadUploaded = () => {
+    if (!uploadedFile) return;
+    const url = URL.createObjectURL(uploadedFile);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${salonName.replace(/\s+/g, "-")}-poster.jpg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
       <PageHeader title="Marketing Hub" sub="Ready-to-share promotional posters for your salon." />
@@ -1950,6 +1994,40 @@ function Marketing({ user, isMobile }) {
             </div>
           </div>
         ))}
+
+        <label
+          className="vellora-card"
+          style={{
+            ...sizeMap.medium,
+            cursor: "pointer",
+            display: "block",
+            transform: isMobile ? "none" : "rotate(1deg)",
+            transition: "transform 0.25s ease, box-shadow 0.25s ease",
+          }}
+          onMouseOver={(e) => { if (!isMobile) e.currentTarget.style.transform = "rotate(0deg) scale(1.04)"; e.currentTarget.style.zIndex = 10; }}
+          onMouseOut={(e) => { if (!isMobile) e.currentTarget.style.transform = "rotate(1deg)"; e.currentTarget.style.zIndex = 1; }}
+        >
+          <div style={{ background: C.card, padding: 10, borderRadius: 12, boxShadow: "0 12px 30px -10px rgba(43,27,46,0.15)", border: `1px solid ${C.line}` }}>
+            <div style={{
+              background: `linear-gradient(160deg, ${C.goldBg} 0%, #FDFBF9 100%)`,
+              borderRadius: 6,
+              border: `2px dashed ${C.gold}`,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 220,
+              padding: "24px 16px",
+            }}>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.plum, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, boxShadow: "0 8px 20px -6px rgba(43,27,46,0.4)" }}>
+                <ImageIcon size={24} color={C.gold} />
+              </div>
+              <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 600, color: C.ink, fontFamily: fontVoice }}>Upload Your Own Poster</p>
+              <p style={{ margin: 0, fontSize: 12.5, color: C.sub, textAlign: "center", lineHeight: 1.5 }}>Already have a design? Upload it here and share directly.</p>
+            </div>
+          </div>
+          <input type="file" accept="image/*" onChange={handleUploadedFile} style={{ display: "none" }} />
+        </label>
       </div>
             {editingTemplate && (
         <div onClick={() => setEditingTemplate(null)} style={{ position: "fixed", inset: 0, background: "rgba(26,18,28,0.65)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
@@ -1981,6 +2059,75 @@ function Marketing({ user, isMobile }) {
                 style={{ ...btnGhost, flex: 1, justifyContent: "center", background: C.card, color: C.plum, border: `1px solid ${C.line}`, boxShadow: "none" }}
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {uploadedPreviewUrl && (
+        <div onClick={closeUploadedPreview} style={{ position: "fixed", inset: 0, background: "rgba(26,18,28,0.7)", backdropFilter: "blur(2px)", zIndex: 100, display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? 0 : 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            ...card,
+            width: "100%",
+            maxWidth: isMobile ? "100%" : 400,
+            textAlign: "center",
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: isMobile ? "28px 28px 0 0" : 22,
+            padding: isMobile ? "20px 20px calc(24px + env(safe-area-inset-bottom))" : "28px",
+          }}>
+            {/* Decorative top accent */}
+            <div style={{
+              position: "absolute", top: 0, left: 0, right: 0, height: 70,
+              background: `linear-gradient(160deg, ${C.plum} 0%, #1A101C 100%)`,
+              zIndex: 0
+            }} />
+
+            {isMobile && (
+              <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.4)", borderRadius: 4, margin: "0 auto 16px", position: "relative", zIndex: 1 }} />
+            )}
+
+            <button
+              onClick={closeUploadedPreview}
+              style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,0.15)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}
+            >×</button>
+
+            <h3 style={{
+              margin: isMobile ? "6px 0 20px" : "0 0 20px",
+              fontSize: 17,
+              fontWeight: 600,
+              color: "#fff",
+              fontFamily: fontVoice,
+              position: "relative",
+              zIndex: 1
+            }}>Ready to Share</h3>
+
+            <div style={{
+              position: "relative",
+              zIndex: 1,
+              background: C.card,
+              padding: 8,
+              borderRadius: 14,
+              boxShadow: "0 12px 30px -10px rgba(43,27,46,0.3)",
+              marginBottom: 20
+            }}>
+              <img src={uploadedPreviewUrl} alt="Your uploaded poster" style={{ width: "100%", borderRadius: 8, display: "block" }} />
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                className="vellora-btn-ghost"
+                style={{ ...btnGhost, flex: 1, justifyContent: "center", padding: "12px 0" }}
+                onClick={handleShareUploaded}
+              >
+                <Sparkles size={15} /> Share
+              </button>
+              <button
+                onClick={handleDownloadUploaded}
+                style={{ ...btnGhost, flex: 1, justifyContent: "center", padding: "12px 0", background: C.card, color: C.plum, border: `1px solid ${C.line}`, boxShadow: "none" }}
+              >
+                Download
               </button>
             </div>
           </div>
