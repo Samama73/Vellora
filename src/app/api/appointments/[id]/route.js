@@ -10,7 +10,7 @@ export async function PUT(req, { params }) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { status, paymentMode, client, phone, service, employee, date, time, price } = body;
+    const { status, paymentMode, cashAmount, onlineAmount, client, phone, service, employee, date, time, price } = body;
 
     // Edit mode — jab client/service/date/time bheja gaya ho (full appointment edit form se)
     const isEditMode = client !== undefined || service !== undefined || date !== undefined || time !== undefined;
@@ -19,13 +19,33 @@ export async function PUT(req, { params }) {
       if (!client || !service || !date || !time) {
         return NextResponse.json({ success: false, error: 'Client, service, date, time zaroori hain.' }, { status: 400 });
       }
-      const mode = paymentMode === 'cash' || paymentMode === 'online' ? paymentMode : null;
+      let mode = paymentMode === 'cash' || paymentMode === 'online' ? paymentMode : null;
+      let cash = 0;
+      let online = 0;
+      const priceNum = Number(price) || 0;
+
+      if (paymentMode === 'split') {
+        cash = Number(cashAmount) || 0;
+        online = Number(onlineAmount) || 0;
+        if (cash <= 0 || online <= 0) {
+          return NextResponse.json({ success: false, error: 'Split me cash aur online dono amount daalo.' }, { status: 400 });
+        }
+        if (Math.abs(cash + online - priceNum) > 0.01) {
+          return NextResponse.json({ success: false, error: 'Cash + Online ka total price ke barabar hona chahiye.' }, { status: 400 });
+        }
+        // purani reports payment_mode padhti hain, isliye jo side badi hai wahi likh do
+        mode = online >= cash ? 'online' : 'cash';
+      } else if (mode === 'cash') {
+        cash = priceNum;
+      } else if (mode === 'online') {
+        online = priceNum;
+      }
 
       const [result] = await pool.query(
         `UPDATE appointments
-         SET client = ?, phone = ?, service = ?, employee = ?, date = ?, time = ?, price = ?, payment_mode = ?
+         SET client = ?, phone = ?, service = ?, employee = ?, date = ?, time = ?, price = ?, payment_mode = ?, cash_amount = ?, online_amount = ?
          WHERE id = ? AND salon_id = ?`,
-        [client, phone || null, service, employee || null, date, time, price || 0, mode, id, user.salonId]
+        [client, phone || null, service, employee || null, date, time, price || 0, mode, cash, online, id, user.salonId]
       );
 
       if (result.affectedRows === 0) {

@@ -27,6 +27,21 @@ const toLocalISO = (d) => {
 };
 const todayISO = () => toLocalISO(new Date());
 const money = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
+const fmtTime = (t) => {
+  if (!t) return "";
+  const [h, m] = String(t).split(":");
+  const hr = Number(h);
+  if (Number.isNaN(hr)) return t;
+  return `${hr % 12 || 12}:${(m || "00").slice(0, 2)} ${hr >= 12 ? "PM" : "AM"}`;
+};
+
+const fmtDate = (d) => {
+  if (!d) return "";
+  const [y, mo, day] = String(d).slice(0, 10).split("-");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  if (!y || !mo || !day) return d;
+  return `${Number(day)} ${months[Number(mo) - 1]} ${y}`;
+};
 
 /* ---------- Refined Premium Palette ---------- */
 const C = {
@@ -278,6 +293,34 @@ function Field({ label, children }) {
   );
 }
 
+function TimeInput({ value, onChange }) {
+  const [h24, m] = (value || "10:00").split(":").map(Number);
+  const period = h24 >= 12 ? "PM" : "AM";
+  const h12 = h24 % 12 || 12;
+  const update = (nh12, nm, np) => {
+    let h = nh12 % 12;
+    if (np === "PM") h += 12;
+    onChange(`${String(h).padStart(2, "0")}:${String(nm).padStart(2, "0")}`);
+  };
+  const mins = Array.from({ length: 12 }, (_, i) => i * 5);
+  if (!mins.includes(m)) { mins.push(m); mins.sort((a, b) => a - b); }
+  const sel = { ...inputStyle, width: "auto", flex: 1, padding: "12px 8px" };
+  return (
+    <div style={{ display: "flex", gap: 6 }}>
+      <select className="vellora-input" value={h12} onChange={(e) => update(Number(e.target.value), m, period)} style={sel}>
+        {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+      </select>
+      <select className="vellora-input" value={m} onChange={(e) => update(h12, Number(e.target.value), period)} style={sel}>
+        {mins.map((n) => <option key={n} value={n}>{String(n).padStart(2, "0")}</option>)}
+      </select>
+      <select className="vellora-input" value={period} onChange={(e) => update(h12, m, e.target.value)} style={sel}>
+        <option value="AM">AM</option>
+        <option value="PM">PM</option>
+      </select>
+    </div>
+  );
+}
+
 function EmptyState({ icon: Icon, title, description }) {
   return (
     <div style={{ padding: "36px 24px", textAlign: "center", background: "#FCFAF8", borderRadius: 16, border: `1px dashed ${C.line}` }}>
@@ -378,7 +421,7 @@ function SearchBar({ setTab, setFocusApptId }) {
                   onMouseEnter={(e) => e.currentTarget.style.background = C.goldLight}
                   onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{a.client}</div>
-                  <div style={{ fontSize: 11.5, color: C.sub }}>{a.service} · {a.date}</div>
+                  <div style={{ fontSize: 11.5, color: C.sub }}>{a.service} · {fmtDate(a.date)}</div>
                 </div>
               ))}
             </div>
@@ -1219,7 +1262,7 @@ function Dashboard({ appts, inventory, employees, isMobile, setTab }) {
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 500, fontSize: 13.5, color: C.ink }}>{a.time}</div>
+                    <div style={{ fontWeight: 500, fontSize: 13.5, color: C.ink }}>{fmtTime(a.time)}</div>
                     <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 20, backgroundColor: getStatusBadge(a.status).bg, color: getStatusBadge(a.status).text }}>
                       {a.status}
                     </span>
@@ -1281,6 +1324,7 @@ function Dashboard({ appts, inventory, employees, isMobile, setTab }) {
 const APPT_STATUS = ["not visited", "visited", "payment pending", "payment done"];
 const PAYMENT_MODES = ["cash", "online"];
 
+const isSplitAppt = (a) => Number(a.cash_amount) > 0 && Number(a.online_amount) > 0;
 const getStatusBadge = (status) => {
   const styles = {
     "not visited": { bg: "#F2ECE7", text: C.sub },
@@ -1398,8 +1442,8 @@ Your thoughts help us serve you better. 💛
 
   Just confirming - you're all booked in at *${salonName}*!
 
-  Date: ${appt.date}
-  Time: ${appt.time}
+  Date: ${fmtDate(appt.date)}
+  Time: ${fmtTime(appt.time)}
   Service: ${appt.service}
 
   Can't wait to see you! Reach out anytime if plans change.
@@ -1427,7 +1471,9 @@ Your thoughts help us serve you better. 💛
       time: a.time || "10:00",
       employee: a.employee || "",
       price: a.price || "",
-      paymentMode: a.payment_mode || "",
+      paymentMode: (Number(a.cash_amount) > 0 && Number(a.online_amount) > 0) ? "split" : (a.payment_mode || ""),
+      cashAmount: Number(a.cash_amount) > 0 ? a.cash_amount : "",
+      onlineAmount: Number(a.online_amount) > 0 ? a.online_amount : "",
     });
   };
 
@@ -1438,9 +1484,21 @@ Your thoughts help us serve you better. 💛
 
   const saveEdit = async () => {
     if (!editForm.client || !editForm.service || !editForm.date || !editForm.time) return;
+    const isSplit = editForm.paymentMode === "split";
+    const cashAmt = Number(editForm.cashAmount) || 0;
+    const onlineAmt = Number(editForm.onlineAmount) || 0;
+    if (isSplit) {
+      if (cashAmt <= 0 || onlineAmt <= 0) return setLoadError("Split me cash aur online dono amount daalo.");
+      if (Math.abs(cashAmt + onlineAmt - Number(editForm.price || 0)) > 0.01) return setLoadError("Cash + Online ka total price ke barabar hona chahiye.");
+    }
     setEditSaving(true);
     const prev = appts;
-    setAppts(appts.map((a) => (a.id === editingAppt.id ? { ...a, ...editForm, payment_mode: editForm.paymentMode } : a)));
+    setAppts(appts.map((a) => (a.id === editingAppt.id ? {
+      ...a, ...editForm,
+      payment_mode: isSplit ? (onlineAmt >= cashAmt ? "online" : "cash") : editForm.paymentMode,
+      cash_amount: isSplit ? cashAmt : (editForm.paymentMode === "cash" ? Number(editForm.price || 0) : 0),
+      online_amount: isSplit ? onlineAmt : (editForm.paymentMode === "online" ? Number(editForm.price || 0) : 0),
+    } : a)));
     try {
       await api.updateAppointment(editingAppt.id, editForm);
       closeEdit();
@@ -1490,7 +1548,7 @@ Your thoughts help us serve you better. 💛
             <input className="vellora-input" placeholder="Contact Number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
             <input className="vellora-input" placeholder="Requested Service (e.g. Hair Styling)" value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} style={inputStyle} />
             <input className="vellora-input" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} style={inputStyle} />
-            <input className="vellora-input" type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} style={inputStyle} />
+            <TimeInput value={form.time} onChange={(v) => setForm({ ...form, time: v })} />
             <input className="vellora-input" placeholder="Assigned Staff (Optional)" value={form.employee} onChange={(e) => setForm({ ...form, employee: e.target.value })} style={inputStyle} />
             <input className="vellora-input" placeholder="Estimated Price (₹)" type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} style={inputStyle} />
             <select className="vellora-input" value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value })} style={inputStyle}>
@@ -1559,17 +1617,23 @@ Your thoughts help us serve you better. 💛
                     <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", padding: "3px 9px", borderRadius: 20, backgroundColor: badge.bg, color: badge.text }}>{a.status}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, color: C.sub }}>
-                    <span>{a.date} · {a.time}</span>
+                    <span>{fmtDate(a.date)} · {fmtTime(a.time)}</span>
                     <span style={{ fontWeight: 700, color: C.ink, fontSize: 14 }}>{a.price ? money(a.price) : "—"}</span>
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                     <select className="vellora-input" value={a.status} onChange={(e) => setStatus(a.id, e.target.value)} style={{ ...inputStyle, flex: 1, padding: "7px 10px", fontSize: 12.5 }}>
                       {APPT_STATUS.map((s) => <option key={s} value={s}>{s.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
                     </select>
-                    <select className="vellora-input" value={a.payment_mode || ""} onChange={(e) => setPaymentMode(a.id, e.target.value)} style={{ ...inputStyle, flex: 1, padding: "7px 10px", fontSize: 12.5 }}>
-                      <option value="" disabled>Payment mode</option>
-                      {PAYMENT_MODES.map((m) => <option key={m} value={m}>{m.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
-                    </select>
+                      {isSplitAppt(a) ? (
+                        <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: C.ink, display: "flex", alignItems: "center" }}>
+                          Cash {money(a.cash_amount)} · Online {money(a.online_amount)}
+                        </div>
+                      ) : (
+                        <select className="vellora-input" value={a.payment_mode || ""} onChange={(e) => setPaymentMode(a.id, e.target.value)} style={{ ...inputStyle, flex: 1, padding: "7px 10px", fontSize: 12.5 }}>
+                          <option value="" disabled>Payment mode</option>
+                          {PAYMENT_MODES.map((m) => <option key={m} value={m}>{m.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
+                        </select>
+                      )}
                     {getWhatsAppLink(a, salonName) && (
                       <a href={getWhatsAppLink(a, salonName)} target="_blank" rel="noopener noreferrer" className="vellora-icon-btn" style={{ ...iconBtn, color: "#25D366" }}><MessageCircle size={17} /></a>
                     )}
@@ -1620,9 +1684,9 @@ Your thoughts help us serve you better. 💛
                       </td>
                       <td style={{ padding: "16px 20px" }}>
                         <span style={{ fontSize: 13, color: C.ink, display: "flex", alignItems: "center", gap: 6 }}>
-                          <Calendar size={12} color={C.sub} /> {a.time}
+                          <Calendar size={12} color={C.sub} /> {fmtTime(a.time)}
                         </span>
-                        <div style={{ fontSize: 11.5, color: C.sub, marginTop: 2 }}>{a.date}</div>
+                        <div style={{ fontSize: 11.5, color: C.sub, marginTop: 2 }}>{fmtDate(a.date)}</div>
                       </td>
                       <td style={{ padding: "16px 20px" }}>
                         <select className="vellora-input" value={a.status} onChange={(e) => setStatus(a.id, e.target.value)} style={{
@@ -1635,12 +1699,18 @@ Your thoughts help us serve you better. 💛
                           {APPT_STATUS.map((s) => <option key={s} value={s}>{s.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
                         </select>
                       </td>
-                      <td style={{ padding: "16px 20px" }}>
-                        <select className="vellora-input" value={a.payment_mode || ""} onChange={(e) => setPaymentMode(a.id, e.target.value)} style={{ ...inputStyle, padding: "6px 10px", fontSize: 12.5, width: "auto" }}>
-                          <option value="" disabled>—</option>
-                          {PAYMENT_MODES.map((m) => <option key={m} value={m}>{m.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
-                        </select>
-                      </td>
+                        <td style={{ padding: "16px 20px" }}>
+                          {isSplitAppt(a) ? (
+                            <div style={{ fontSize: 12.5, fontWeight: 600, color: C.ink, whiteSpace: "nowrap" }}>
+                              Cash {money(a.cash_amount)} · Online {money(a.online_amount)}
+                            </div>
+                          ) : (
+                            <select className="vellora-input" value={a.payment_mode || ""} onChange={(e) => setPaymentMode(a.id, e.target.value)} style={{ ...inputStyle, padding: "6px 10px", fontSize: 12.5, width: "auto" }}>
+                              <option value="" disabled>—</option>
+                              {PAYMENT_MODES.map((m) => <option key={m} value={m}>{m.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
+                            </select>
+                          )}
+                        </td>
                       <td style={{ padding: "16px 20px" }}>
                         <span style={{ fontSize: 14.5, fontWeight: 700, color: cancelled ? C.sub : C.ink, textDecoration: cancelled ? "line-through" : "none" }}>
                           {a.price ? money(a.price) : "—"}
@@ -1753,12 +1823,25 @@ Your thoughts help us serve you better. 💛
               <input className="vellora-input" placeholder="Service" value={editForm.service} onChange={(e) => setEditForm({ ...editForm, service: e.target.value })} style={inputStyle} />
               <input className="vellora-input" placeholder="Assigned Staff (Optional)" value={editForm.employee} onChange={(e) => setEditForm({ ...editForm, employee: e.target.value })} style={inputStyle} />
               <input className="vellora-input" type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} style={inputStyle} />
-              <input className="vellora-input" type="time" value={editForm.time} onChange={(e) => setEditForm({ ...editForm, time: e.target.value })} style={inputStyle} />
+              <TimeInput value={editForm.time} onChange={(v) => setEditForm({ ...editForm, time: v })} />
               <input className="vellora-input" placeholder="Price (₹)" type="number" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} style={inputStyle} />
               <select className="vellora-input" value={editForm.paymentMode} onChange={(e) => setEditForm({ ...editForm, paymentMode: e.target.value })} style={inputStyle}>
                 <option value="">Payment Mode</option>
                 {PAYMENT_MODES.map((m) => <option key={m} value={m}>{m.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
+                <option value="split">Split (Cash + Online)</option>
               </select>
+              {editForm.paymentMode === "split" && (
+                <>
+                  <input className="vellora-input" type="number" placeholder="Cash amount (₹)" value={editForm.cashAmount}
+                    onChange={(e) => setEditForm({
+                      ...editForm,
+                      cashAmount: e.target.value,
+                      onlineAmount: editForm.price ? String(Math.max(Number(editForm.price) - Number(e.target.value || 0), 0)) : editForm.onlineAmount
+                    })} style={inputStyle} />
+                  <input className="vellora-input" type="number" placeholder="Online amount (₹)" value={editForm.onlineAmount}
+                    onChange={(e) => setEditForm({ ...editForm, onlineAmount: e.target.value })} style={inputStyle} />
+                </>
+              )}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
               <button className="vellora-btn-ghost" style={{ ...btnGhost, flex: 1, justifyContent: "center", opacity: editSaving ? 0.7 : 1 }} onClick={saveEdit} disabled={editSaving}>
@@ -2761,12 +2844,20 @@ function SuperAdminPanel({ token }) {
   );
 }
 
+const fmtPeriodLabel = (p) => {
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const s = String(p);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${Number(s.slice(8, 10))} ${months[Number(s.slice(5, 7)) - 1]} ${s.slice(0, 4)}`;
+  if (/^\d{4}-\d{2}$/.test(s)) return `${months[Number(s.slice(5, 7)) - 1]} ${s.slice(0, 4)}`;
+  return s;
+};
 const PAY_FILTERS = [["all", "All"], ["cash", "Cash"], ["online", "Online"]];
 
 /* ================= REPORTS ================= */
 function Reports({ setLoadError }) {
   const [period, setPeriod] = useState("month");
   const [payMode, setPayMode] = useState("all"); // all | cash | online
+  const [detailPeriod, setDetailPeriod] = useState("");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [incentiveEnabled, setIncentiveEnabled] = useState(false);
@@ -2794,13 +2885,26 @@ function Reports({ setLoadError }) {
     return () => { cancelled = true; };
   }, []);
 
-    const breakdown = data?.paymentBreakdown || [];
+  const breakdown = data?.paymentBreakdown || [];
   const payTotals = data?.paymentTotals || { cashCustomers: 0, cashRevenue: 0, onlineCustomers: 0, onlineRevenue: 0, unknownCustomers: 0, unknownRevenue: 0 };
+  const details = data?.paymentDetails || [];
+  const detailPeriods = [...new Set(details.map((d) => d.period))].sort().reverse();
+  const activePeriod = detailPeriods.includes(detailPeriod) ? detailPeriod : detailPeriods[0];
+  const shownDetails = details
+    .filter((d) => d.period === activePeriod)
+    .filter((d) => payMode === "cash" ? d.cash > 0 : payMode === "online" ? d.online > 0 : true);
+  const detailCash = shownDetails.reduce((s, d) => s + d.cash, 0);
+  const detailOnline = shownDetails.reduce((s, d) => s + d.online, 0);
+  const hasUnknown = shownDetails.some((d) => d.unknown > 0);
 
   // Filter ke hisaab se cards aur chart ka data nikaalo
   let shownRevenue = data?.totalRevenue || 0;
   let shownCustomers = data?.totalAppointments || 0;
-  let chartRows = data?.revenueTrend || [];
+  const breakdownByPeriod = new Map(breakdown.map((b) => [b.period, b]));
+  let chartRows = (data?.revenueTrend || []).map((r) => {
+    const b = breakdownByPeriod.get(r.period);
+    return b ? { ...r, cashRevenue: b.cashRevenue, onlineRevenue: b.onlineRevenue } : r;
+    });
 
   if (payMode === "cash") {
     shownRevenue = payTotals.cashRevenue;
@@ -2870,7 +2974,7 @@ function Reports({ setLoadError }) {
 
           <div className="vellora-card" style={{ ...card, marginBottom: 20 }}>
             <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>Revenue trend</h3>
-            <RevenueBarChart rows={chartRows} />
+            <RevenueBarChart rows={chartRows} mode={payMode} />
           </div>
 
           <div className="vellora-card" style={{ ...card, marginBottom: 20 }}>
@@ -2900,34 +3004,54 @@ function Reports({ setLoadError }) {
               </div>
             )}
 
-            {breakdown.length === 0 ? (
-              <EmptyState icon={Wallet} title="No payments yet" description="Appointments ko paid mark karne ke baad yahan cash/online split dikhega." />
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ color: C.sub, textAlign: "left" }}>
-                      <th style={{ padding: "8px 6px", fontWeight: 500 }}>Period</th>
-                      <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Cash</th>
-                      <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Online</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {breakdown.map((r) => (
-                      <tr key={r.period} style={{ borderTop: `1px solid ${C.line}` }}>
-                        <td style={{ padding: "10px 6px", fontWeight: 500 }}>{r.period}</td>
-                        <td style={{ padding: "10px 6px", textAlign: "right" }}>
-                          {r.cashCustomers} <span style={{ color: C.sub }}>· {money(r.cashRevenue)}</span>
-                        </td>
-                        <td style={{ padding: "10px 6px", textAlign: "right" }}>
-                          {r.onlineCustomers} <span style={{ color: C.sub }}>· {money(r.onlineRevenue)}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+              {details.length === 0 ? (
+                <EmptyState icon={Wallet} title="No payments yet" description="Appointments ko paid mark karne ke baad yahan naam ke saath cash/online dikhega." />
+              ) : (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12.5, color: C.sub }}>Period</span>
+                    <select className="vellora-input" value={activePeriod} onChange={(e) => setDetailPeriod(e.target.value)} style={{ ...inputStyle, width: "auto", padding: "8px 12px" }}>
+                      {detailPeriods.map((p) => <option key={p} value={p}>{fmtPeriodLabel(p)}</option>)}
+                    </select>
+                    <span style={{ fontSize: 12.5, color: C.sub }}>{shownDetails.length} booking{shownDetails.length !== 1 ? "s" : ""}</span>
+                  </div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ color: C.sub, textAlign: "left" }}>
+                          <th style={{ padding: "8px 6px", fontWeight: 500 }}>Client</th>
+                          <th style={{ padding: "8px 6px", fontWeight: 500 }}>Date</th>
+                          <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Cash</th>
+                          <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Online</th>
+                          {hasUnknown && <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Not recorded</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {shownDetails.map((d) => (
+                          <tr key={d.id} style={{ borderTop: `1px solid ${C.line}` }}>
+                            <td style={{ padding: "10px 6px" }}>
+                              <div style={{ fontWeight: 600 }}>{d.client}</div>
+                              {d.service && <div style={{ fontSize: 11.5, color: C.sub }}>{d.service}</div>}
+                            </td>
+                            <td style={{ padding: "10px 6px", color: C.sub, whiteSpace: "nowrap" }}>{fmtPeriodLabel(d.date)}</td>
+                            <td style={{ padding: "10px 6px", textAlign: "right", fontWeight: 600, color: d.cash > 0 ? "#059669" : C.line }}>{d.cash > 0 ? money(d.cash) : "—"}</td>
+                            <td style={{ padding: "10px 6px", textAlign: "right", fontWeight: 600, color: d.online > 0 ? "#2563EB" : C.line }}>{d.online > 0 ? money(d.online) : "—"}</td>
+                            {hasUnknown && <td style={{ padding: "10px 6px", textAlign: "right", color: C.sub }}>{d.unknown > 0 ? money(d.unknown) : "—"}</td>}
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700 }}>
+                          <td style={{ padding: "10px 6px" }} colSpan={2}>Total</td>
+                          <td style={{ padding: "10px 6px", textAlign: "right", color: "#059669" }}>{money(detailCash)}</td>
+                          <td style={{ padding: "10px 6px", textAlign: "right", color: "#2563EB" }}>{money(detailOnline)}</td>
+                          {hasUnknown && <td />}
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              )}
           </div>
 
           <div className="vellora-card" style={card}>
@@ -2955,58 +3079,94 @@ function Reports({ setLoadError }) {
   );
 }
 
-function RevenueBarChart({ rows }) {
+function RevenueBarChart({ rows, mode = "all" }) {
   if (!rows || rows.length === 0) return <EmptyState icon={TrendingUp} title="No revenue data yet" description="Once you mark appointments as paid, your revenue trend will show up here." />;
 
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const fmtPeriod = (p) => {
+    const s = String(p);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${Number(s.slice(8, 10))} ${months[Number(s.slice(5, 7)) - 1]}`;
+    if (/^\d{4}-\d{2}$/.test(s)) return `${months[Number(s.slice(5, 7)) - 1]} ${s.slice(0, 4)}`;
+    return s;
+  };
+  const shortMoney = (v) => v >= 100000 ? `${+(v / 100000).toFixed(1)}L` : v >= 1000 ? `${+(v / 1000).toFixed(1)}k` : String(v);
+
   const max = Math.max(...rows.map((r) => Number(r.revenue)), 1);
-  // Y-axis ke liye ek clean round number nikalo (jaise 600 ho to 800 tak scale karo)
-  const niceMax = Math.ceil(max / (max > 1000 ? 1000 : 100)) * (max > 1000 ? 1000 : 100) || max;
+  const steps = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000];
+  const step = steps.find((s) => max / s <= 4) || 1000000;
+  const niceMax = Math.ceil(max / step) * step;
+  const yTicks = niceMax / step;
 
-  const width = 700, height = 280, padding = 50, bottomPadding = 40;
-  const chartHeight = height - padding - bottomPadding;
-  const barWidth = Math.min(70, (width - padding * 2) / rows.length - 20);
-  const gap = (width - padding * 2 - barWidth * rows.length) / (rows.length + 1);
+  const padLeft = 56, padTop = 30, padBottom = 60, height = 300, slot = 64;
+  const width = Math.max(700, padLeft + rows.length * slot + 20);
+  const chartH = height - padTop - padBottom;
+  const barW = Math.min(56, slot - 16);
+  const labelEvery = Math.ceil(rows.length / 14);
 
-  const yTicks = 4; // kitni horizontal gridlines chahiye
+  const stacked = mode === "all" && rows.some((r) => r.cashRevenue !== undefined);
+  const singleColor = mode === "cash" ? "#10B981" : mode === "online" ? "#3B82F6" : C.plum;
+  const scale = (v) => (Number(v) / niceMax) * chartH;
+  const baseY = padTop + chartH;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto" }}>
-      {/* Y-axis gridlines aur labels */}
-      {Array.from({ length: yTicks + 1 }).map((_, i) => {
-        const value = (niceMax / yTicks) * i;
-        const y = height - bottomPadding - (chartHeight / yTicks) * i;
-        return (
-          <g key={i}>
-            <line x1={padding} y1={y} x2={width - 10} y2={y} stroke={C.line} strokeWidth="1" />
-            <text x={padding - 10} y={y + 4} textAnchor="end" fontSize="10" fill={C.sub}>
-              {value >= 1000 ? `${(value / 1000).toFixed(0)}k` : Math.round(value)}
-            </text>
-          </g>
-        );
-      })}
+    <div>
+      {(stacked || mode !== "all") && (
+        <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 12.5, color: C.sub, flexWrap: "wrap" }}>
+          {(stacked || mode === "cash") && <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "#10B981" }} /> Cash</span>}
+          {(stacked || mode === "online") && <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "#3B82F6" }} /> Online</span>}
+          {stacked && <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "#B0A6AA" }} /> Mode not recorded</span>}
+        </div>
+      )}
+      <div style={{ overflowX: "auto" }}>
+        <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", minWidth: width > 700 ? width : undefined, height: "auto" }}>
+          {Array.from({ length: yTicks + 1 }).map((_, i) => {
+            const value = step * i;
+            const y = baseY - (chartH / yTicks) * i;
+            return (
+              <g key={i}>
+                <line x1={padLeft} y1={y} x2={width - 10} y2={y} stroke={C.line} strokeWidth="1" />
+                <text x={padLeft - 10} y={y + 4} textAnchor="end" fontSize="11" fill={C.sub}>{value === 0 ? "0" : "₹" + shortMoney(value)}</text>
+              </g>
+            );
+          })}
+          <line x1={padLeft} y1={baseY} x2={width - 10} y2={baseY} stroke={C.ink} strokeWidth="1.5" />
 
-      {/* X aur Y axis lines */}
-      <line x1={padding} y1={height - bottomPadding} x2={width - 10} y2={height - bottomPadding} stroke={C.ink} strokeWidth="1.5" />
-      <line x1={padding} y1={padding - 10} x2={padding} y2={height - bottomPadding} stroke={C.ink} strokeWidth="1.5" />
-
-      {/* Bars, value labels, date labels */}
-      {rows.map((r, idx) => {
-        const barHeight = (Number(r.revenue) / niceMax) * chartHeight;
-        const x = padding + gap + idx * (barWidth + gap);
-        const y = height - bottomPadding - barHeight;
-        return (
-          <g key={r.period}>
-            <text x={x + barWidth / 2} y={y - 8} textAnchor="middle" fontSize="11" fontWeight="600" fill={C.ink}>
-              {money(r.revenue)}
-            </text>
-            <rect x={x} y={y} width={barWidth} height={barHeight} fill={C.plum} rx={4} />
-            <text x={x + barWidth / 2} y={height - bottomPadding + 18} textAnchor="middle" fontSize="10" fill={C.sub}>
-              {r.period}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+          {rows.map((r, idx) => {
+            const x = padLeft + idx * slot + (slot - barW) / 2;
+            const total = Number(r.revenue) || 0;
+            const totalH = scale(total);
+            const cash = Number(r.cashRevenue) || 0;
+            const online = Number(r.onlineRevenue) || 0;
+            const unknown = Math.max(total - cash - online, 0);
+            const tip = stacked
+              ? `${fmtPeriod(r.period)}\nCash: ${money(cash)}\nOnline: ${money(online)}${unknown > 0 ? `\nNot recorded: ${money(unknown)}` : ""}\nTotal: ${money(total)}\nBookings: ${r.appointments}`
+              : `${fmtPeriod(r.period)}\nRevenue: ${money(total)}\nBookings: ${r.appointments}`;
+            const showLabel = idx % labelEvery === 0;
+            return (
+              <g key={r.period}>
+                <title>{tip}</title>
+                {stacked ? (
+                  <>
+                    <rect x={x} y={baseY - scale(cash)} width={barW} height={scale(cash)} fill="#10B981" />
+                    <rect x={x} y={baseY - scale(cash) - scale(online)} width={barW} height={scale(online)} fill="#3B82F6" />
+                    <rect x={x} y={baseY - totalH} width={barW} height={scale(unknown)} fill="#B0A6AA" />
+                  </>
+                ) : (
+                  <rect x={x} y={baseY - totalH} width={barW} height={totalH} fill={singleColor} rx={4} />
+                )}
+                <text x={x + barW / 2} y={baseY - totalH - 8} textAnchor="middle" fontSize="11" fontWeight="600" fill={C.ink}>{money(total)}</text>
+                {showLabel && (
+                  <>
+                    <text x={x + barW / 2} y={baseY + 18} textAnchor="middle" fontSize="11.5" fontWeight="500" fill={C.ink}>{fmtPeriod(r.period)}</text>
+                    <text x={x + barW / 2} y={baseY + 34} textAnchor="middle" fontSize="10" fill={C.sub}>{r.appointments} booking{Number(r.appointments) !== 1 ? "s" : ""}</text>
+                  </>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
   );
 }
 

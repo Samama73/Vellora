@@ -10,7 +10,7 @@ export async function GET(req) {
 
   try {
     const [rows] = await pool.query(
-  "SELECT id, salon_id, client, phone, service, employee, DATE_FORMAT(date, '%Y-%m-%d') AS date, TIME_FORMAT(time, '%H:%i') AS time, price, payment_mode, status, created_by, created_at FROM appointments WHERE salon_id = ? ORDER BY date DESC",
+  "SELECT id, salon_id, client, phone, service, employee, DATE_FORMAT(date, '%Y-%m-%d') AS date, TIME_FORMAT(time, '%H:%i') AS time, price, payment_mode, cash_amount, online_amount, status, created_by, created_at FROM appointments WHERE salon_id = ? ORDER BY date DESC",
   [user.salonId]
 );
     return NextResponse.json({ success: true, appointments: rows });
@@ -32,12 +32,15 @@ export async function POST(req) {
 
     // Sirf 'cash' ya 'online' allow karo, warna null (bina bataye bhi appointment ban sake)
     const mode = paymentMode === 'cash' || paymentMode === 'online' ? paymentMode : null;
+    const priceNum = Number(price) || 0;
+    const cash = mode === 'cash' ? priceNum : 0;
+    const online = mode === 'online' ? priceNum : 0;
 
     const id = randomUUID();
     await pool.query(
-      `INSERT INTO appointments (id, salon_id, client, phone, service, employee, date, time, price, payment_mode, status, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'not visited', ?)`,
-      [id, user.salonId, client, phone || null, service, employee || null, date, time, price || 0, mode, user.userId]
+      `INSERT INTO appointments (id, salon_id, client, phone, service, employee, date, time, price, payment_mode, cash_amount, online_amount, status, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'not visited', ?)`,
+      [id, user.salonId, client, phone || null, service, employee || null, date, time, price || 0, mode, cash, online, user.userId]
     );
 
     return NextResponse.json({ success: true, id });
