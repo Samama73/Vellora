@@ -57,11 +57,11 @@ export async function PUT(req, { params }) {
     // Sirf 'cash' ya 'online' allow karo. Agar bheja hi nahi to column ko touch mat karo (purana value rahega)
     const mode = paymentMode === 'cash' || paymentMode === 'online' ? paymentMode : undefined;
 
-    // salon_id = ? bhi WHERE mein hai — koi doosre salon ki appointment edit nahi kar sakta, chahe ID pata bhi ho
+    // salon_id = ? bhi WHERE mein hai — koi doosre salon ki appointment edit nahi kar sakta, chahe ID pata bhi ho jayega
     const [result] = mode === undefined
       ? await pool.query(
           'UPDATE appointments SET status = ? WHERE id = ? AND salon_id = ?',
-          [status, id, user.salonId]
+          [status, id,  user.salonId]
         )
       : await pool.query(
           'UPDATE appointments SET status = ?, payment_mode = ? WHERE id = ? AND salon_id = ?',
