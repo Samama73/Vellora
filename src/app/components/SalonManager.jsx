@@ -2885,6 +2885,16 @@ function Reports({ setLoadError }) {
     return () => { cancelled = true; };
   }, []);
 
+  const lastMonthLabel = (() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - 1);
+    return d.toLocaleString("en-IN", { month: "long", year: "numeric" });
+  })();
+  const lastMonthRows = data?.employeePerformanceLastMonth || [];
+  const lastMonthIncentive = (rev) => (Number(rev || 0) * Number(incentivePercent || 0)) / 100;
+  const lastMonthTotal = lastMonthRows.reduce((s, r) => s + lastMonthIncentive(r.revenue), 0);
+
   const breakdown = data?.paymentBreakdown || [];
   const payTotals = data?.paymentTotals || { cashCustomers: 0, cashRevenue: 0, onlineCustomers: 0, onlineRevenue: 0, unknownCustomers: 0, unknownRevenue: 0 };
   const details = data?.paymentDetails || [];
@@ -3073,6 +3083,37 @@ function Reports({ setLoadError }) {
               })}
             </div>
           </div>
+          
+          {incentiveEnabled && (
+            <div className="vellora-card" style={{ ...card, marginTop: 20 }}>
+              <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 600, color: C.ink }}>
+                Last month's incentive
+              </h3>
+              <p style={{ margin: "0 0 16px", fontSize: 12.5, color: C.sub }}>
+                {lastMonthLabel} · {incentivePercent}% of revenue
+              </p>
+              {lastMonthRows.length === 0 && (
+                <EmptyState icon={Users} title="No data for last month" description="Pichle mahine koi paid appointment nahi mili." />
+              )}
+              {lastMonthRows.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {lastMonthRows.map((r) => (
+                    <div key={r.employee} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
+                      <div>
+                        <div style={{ fontWeight: 500 }}>{r.employee}</div>
+                        <div style={{ fontSize: 11.5, color: C.sub }}>{money(r.revenue)} · {r.appointments} appts</div>
+                      </div>
+                      <div style={{ color: C.gold, fontWeight: 700 }}>{money(lastMonthIncentive(r.revenue))}</div>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", borderTop: `2px solid ${C.line}`, paddingTop: 10, fontWeight: 700, fontSize: 13 }}>
+                    <span>Total incentive</span>
+                    <span style={{ color: C.gold }}>{money(lastMonthTotal)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

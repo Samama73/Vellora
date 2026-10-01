@@ -48,6 +48,17 @@ export async function GET(req) {
       [user.salonId]
     );
 
+        // Employee performance — pichla calendar month (last month ka incentive dekhne ke liye)
+    const [employeeLastMonthRows] = await pool.query(
+      `SELECT employee, SUM(price) AS revenue, COUNT(*) AS appointments
+       FROM appointments
+       WHERE salon_id = ? AND status = 'payment done' AND employee IS NOT NULL AND employee != ''
+         AND DATE_FORMAT(date, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m')
+       GROUP BY employee
+       ORDER BY revenue DESC`,
+      [user.salonId]
+    );
+
     // Payment mode breakdown — har paid appointment alag se aayegi, split ka cash/online amount alag-alag ginenge
     const [modeRows] = await pool.query(
       `SELECT DATE_FORMAT(date, ?) AS period,
@@ -131,6 +142,7 @@ export async function GET(req) {
       revenueTrend: revenueRows,
       employeePerformance: employeeRows,
       employeePerformanceMonth: employeeMonthRows,
+      employeePerformanceLastMonth: employeeLastMonthRows,
       paymentBreakdown,
       paymentTotals,
       paymentDetails,
