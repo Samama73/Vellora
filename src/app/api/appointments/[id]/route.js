@@ -2,6 +2,39 @@ import pool from '@/lib/db';
 import { getUserFromRequest } from '@/lib/getUser';
 import { NextResponse } from 'next/server';
 
+// Customers hamesha appointments se recompute hote hain (double click / retry pe bhi galat nahi honge)
+async function syncCustomer(salonId, phone, name) {
+  if (!phone) return;
+  const [[agg]] = await pool.query(
+    `SELECT COUNT(*) AS visits, COALESCE(SUM(price),0) AS spent, MAX(date) AS last_date
+     FROM appointments
+     WHERE salon_id = ? AND phone = ? AND status = 'payment done'`,
+    [salonId, phone]
+  );
+  const visits = Number(agg.visits);
+  const spent = Number(agg.spent);
+  const isVip = visits >= 5 && spent >= 3000 ? 1 : 0;
+
+  const [existing] = await pool.query(
+    'SELECT id FROM customers WHERE salon_id = ? AND phone = ?',
+    [salonId, phone]
+  );
+  if (existing.length > 0) {
+    await pool.query(
+      `UPDATE customers
+       SET total_visits = ?, total_spent = ?, last_visit_date = ?, is_vip = ?, name = COALESCE(?, name)
+       WHERE id = ?`,
+      [visits, spent, agg.last_date, isVip, name || null, existing[0].id]
+    );
+  } else if (visits > 0) {
+    await pool.query(
+      `INSERT INTO customers (salon_id, name, phone, total_visits, total_spent, last_visit_date, is_vip)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [salonId, name, phone, visits, spent, agg.last_date, isVip]
+    );
+  }
+}
+
 // PUT: status update karo, YA poori appointment edit karo (sirf apne salon ki appointment)
 export async function PUT(req, { params }) {
   const user = getUserFromRequest(req);
@@ -41,6 +74,12 @@ export async function PUT(req, { params }) {
         online = priceNum;
       }
 
+      // purana phone pakad lo (agar edit me phone badla to purane customer ko bhi recompute karna padega)
+      const [[old]] = await pool.query(
+        'SELECT phone FROM appointments WHERE id = ? AND salon_id = ?',
+        [id, user.salonId]
+      );
+
       const [result] = await pool.query(
         `UPDATE appointments
          SET client = ?, phone = ?, service = ?, employee = ?, date = ?, time = ?, price = ?, payment_mode = ?, cash_amount = ?, online_amount = ?
@@ -51,6 +90,12 @@ export async function PUT(req, { params }) {
       if (result.affectedRows === 0) {
         return NextResponse.json({ success: false, error: 'Appointment nahi mili.' }, { status: 404 });
       }
+
+      try {
+        await syncCustomer(user.salonId, phone || null, client);
+        if (old?.phone && old.phone !== phone) await syncCustomer(user.salonId, old.phone, null);
+      } catch (e) { console.error('Customer sync error:', e.message); }
+
       return NextResponse.json({ success: true });
     }
 
@@ -72,44 +117,15 @@ export async function PUT(req, { params }) {
       return NextResponse.json({ success: false, error: 'Appointment nahi mili.' }, { status: 404 });
     }
 
-    // Naya: payment done hone pe customer table sync karo (purana flow bilkul same rahega, ye sirf extra step hai)
-    if (status === 'payment done') {
-      try {
-        const [rows] = await pool.query(
-          'SELECT client, phone, price FROM appointments WHERE id = ? AND salon_id = ?',
-          [id, user.salonId]
-        );
-        const appt = rows[0];
-
-        if (appt && appt.phone) {
-          const [existing] = await pool.query(
-            'SELECT id FROM customers WHERE salon_id = ? AND phone = ?',
-            [user.salonId, appt.phone]
-          );
-
-          if (existing.length > 0) {
-            await pool.query(
-              `UPDATE customers 
-               SET total_visits = total_visits + 1, 
-                   total_spent = total_spent + ?, 
-                   last_visit_date = CURDATE(),
-                   name = ?,
-                   is_vip = (total_visits + 1 >= 5 AND total_spent + ? >= 3000)
-               WHERE id = ?`,
-              [appt.price || 0, appt.client, appt.price || 0, existing[0].id]
-            );
-          } else {
-            await pool.query(
-              `INSERT INTO customers (salon_id, name, phone, total_visits, total_spent, last_visit_date, is_vip)
-               VALUES (?, ?, ?, 1, ?, CURDATE(), (1 >= 5 AND ? >= 3000))`,
-              [user.salonId, appt.client, appt.phone, appt.price || 0, appt.price || 0]
-            );
-          }
-        }
-      } catch (syncErr) {
-        // Customer sync fail ho bhi jaye, appointment status update to ho hi chuka hai — isliye sirf log karo, error mat throw karo
-        console.error('Customer sync error:', syncErr.message);
-      }
+    // Customers recompute karo (status badla ho ya payment mode, count hamesha appointments se aayega)
+    try {
+      const [rows] = await pool.query(
+        'SELECT client, phone FROM appointments WHERE id = ? AND salon_id = ?',
+        [id, user.salonId]
+      );
+      if (rows[0]) await syncCustomer(user.salonId, rows[0].phone, rows[0].client);
+    } catch (syncErr) {
+      console.error('Customer sync error:', syncErr.message);
     }
 
     return NextResponse.json({ success: true });
@@ -126,6 +142,11 @@ export async function DELETE(req, { params }) {
   try {
     const { id } = await params;
 
+    const [[old]] = await pool.query(
+      'SELECT phone FROM appointments WHERE id = ? AND salon_id = ?',
+      [id, user.salonId]
+    );
+
     const [result] = await pool.query(
       'DELETE FROM appointments WHERE id = ? AND salon_id = ?',
       [id, user.salonId]
@@ -134,6 +155,8 @@ export async function DELETE(req, { params }) {
     if (result.affectedRows === 0) {
       return NextResponse.json({ success: false, error: 'Appointment nahi mili.' }, { status: 404 });
     }
+
+    try { if (old?.phone) await syncCustomer(user.salonId, old.phone, null); } catch (e) { console.error('Customer sync error:', e.message); }
 
     return NextResponse.json({ success: true });
   } catch (err) {
