@@ -59,6 +59,7 @@ export const api = {
   deleteAttendance: (id) => request(`/attendance/${id}`, { method: "DELETE" }),
 
   getCustomers: () => request("/customers"),
+  getCustomerHistory: (phone) => request(`/customers/history?phone=${encodeURIComponent(phone)}`),
   search: (q) => request(`/search?q=${encodeURIComponent(q)}`),
 };
 

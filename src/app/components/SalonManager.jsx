@@ -346,7 +346,7 @@ function PageHeader({ title, sub, action }) {
   );
 }
 
-function SearchBar({ setTab, setFocusApptId }) {
+function SearchBar({ setTab, setFocusApptId, onPickCustomer }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
   const [open, setOpen] = useState(false);
@@ -417,11 +417,11 @@ function SearchBar({ setTab, setFocusApptId }) {
             <div style={{ marginBottom: 6 }}>
               <div style={{ padding: "6px 10px", fontSize: 10.5, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: 0.5 }}>Appointments</div>
               {results.appointments.map((a) => (
-                <div key={a.id} onClick={() => goTo("appointments", a.id)} style={{ padding: "8px 10px", borderRadius: 8, cursor: "pointer" }}
+                <div key={a.id} onClick={() => { if (a.phone) { onPickCustomer({ name: a.client, phone: a.phone }); setOpen(false); setQuery(""); setResults(null); } else { goTo("appointments", a.id); } }} style={{ padding: "8px 10px", borderRadius: 8, cursor: "pointer" }}
                   onMouseEnter={(e) => e.currentTarget.style.background = C.goldLight}
                   onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{a.client}</div>
-                  <div style={{ fontSize: 11.5, color: C.sub }}>{a.service} · {fmtDate(a.date)}</div>
+                  <div style={{ fontSize: 11.5, color: C.sub }}>{a.phone ? `${a.phone} · ` : ""}{a.visits} {Number(a.visits) === 1 ? "visit" : "visits"} · last {fmtDate(a.date)}</div>
                 </div>
               ))}
             </div>
@@ -751,6 +751,7 @@ export default function SalonManager() {
   const [loadError, setLoadError] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [focusApptId, setFocusApptId] = useState(null); 
+  const [searchCustomer, setSearchCustomer] = useState(null);
 
   const [appts, setAppts] = useState([]);
   const [inventory, setInventory] = useState([]);
@@ -1009,7 +1010,7 @@ export default function SalonManager() {
 
         {!isMobile && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, gap: 16 }}>
-            <SearchBar setTab={setTab} setFocusApptId={setFocusApptId} />
+            <SearchBar setTab={setTab} setFocusApptId={setFocusApptId} onPickCustomer={setSearchCustomer} />
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.card, borderRadius: 999, padding: "5px 14px 5px 5px", boxShadow: "0 1px 3px rgba(43,27,46,0.08)" }}>
                 <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.gold, display: "flex", alignItems: "center", justifyContent: "center", color: C.plum, fontWeight: 700, fontSize: 12 }}>
@@ -1036,9 +1037,9 @@ export default function SalonManager() {
 
         <div key={tab} style={{ animation: "fadeIn 0.22s ease-out" }}>
           {tab === "dashboard" && <Dashboard appts={appts} inventory={inventory} employees={employees} isMobile={isMobile} setTab={setTab} />}
-          {tab === "appointments" && <Appointments appts={appts} setAppts={setAppts} setLoadError={setLoadError} isMobile={isMobile} salonName={user.salonName || "our salon"} paymentSettings={paymentSettings} focusApptId={focusApptId} setFocusApptId={setFocusApptId} />}
+          {tab === "appointments" && <Appointments employees={employees} appts={appts} setAppts={setAppts} setLoadError={setLoadError} isMobile={isMobile} salonName={user.salonName || "our salon"} paymentSettings={paymentSettings} focusApptId={focusApptId} setFocusApptId={setFocusApptId} />}
           {tab === "reports" && <Reports setLoadError={setLoadError} />}
-          {tab === "customers" && <Customers setLoadError={setLoadError} isMobile={isMobile} />}
+          {tab === "customers" && <Customers setLoadError={setLoadError} isMobile={isMobile} employees={employees} setAppts={setAppts} />}
           {tab === "settings" && <PaymentSettings settings={paymentSettings} setPaymentSettings={setPaymentSettings} setLoadError={setLoadError} isMobile={isMobile} />}
           {tab === "general-settings" && <Settings isMobile={isMobile} />}
           {tab === "marketing" && <Marketing user={user} isMobile={isMobile} />}
@@ -1062,6 +1063,18 @@ export default function SalonManager() {
             );
           })}
         </nav>
+      )}
+      
+      {searchCustomer && (
+        <CustomerDetailModal
+          customer={searchCustomer}
+          employees={employees}
+          isMobile={isMobile}
+          setLoadError={setLoadError}
+          onClose={() => setSearchCustomer(null)}
+          onVisitAdded={(created) => setAppts((prev) => [created, ...prev])}
+          onEditVisit={(v) => { setSearchCustomer(null); setTab("appointments"); setFocusApptId(v.id); }}
+        />
       )}
     </div>
   );
@@ -1335,7 +1348,7 @@ const getStatusBadge = (status) => {
   return styles[status] || styles["not visited"];
 };
 
-function Appointments({ appts, setAppts, setLoadError, isMobile, salonName, paymentSettings, focusApptId, setFocusApptId }) {
+function Appointments({ employees, appts, setAppts, setLoadError, isMobile, salonName, paymentSettings, focusApptId, setFocusApptId }) {
   const [showForm, setShowForm] = useState(false);
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -1456,8 +1469,9 @@ Your thoughts help us serve you better. 💛
   };
 
   const [collectPaymentAppt, setCollectPaymentAppt] = useState(null);
+  const [historyCustomer, setHistoryCustomer] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
-    const [editingAppt, setEditingAppt] = useState(null);
+  const [editingAppt, setEditingAppt] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
 
@@ -1610,7 +1624,7 @@ Your thoughts help us serve you better. 💛
                         {a.client?.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{a.client}</div>
+                        <div onClick={() => a.phone && setHistoryCustomer({ name: a.client, phone: a.phone })} style={{ fontWeight: 600, fontSize: 14.5, color: C.ink, cursor: a.phone ? "pointer" : "default", textDecoration: a.phone ? "underline dotted" : "none" }}>{a.client}</div>
                         <div style={{ fontSize: 12.5, color: C.sub, marginTop: 1 }}>{a.service}</div>
                       </div>
                     </div>
@@ -1673,7 +1687,7 @@ Your thoughts help us serve you better. 💛
                             {a.client?.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: 13.5, color: C.ink }}>{a.client}</div>
+                            <div onClick={() => a.phone && setHistoryCustomer({ name: a.client, phone: a.phone })} style={{ fontWeight: 600, fontSize: 13.5, color: C.ink, cursor: a.phone ? "pointer" : "default", textDecoration: a.phone ? "underline dotted" : "none" }}>{a.client}</div>
                             {a.phone && <div style={{ fontSize: 11.5, color: C.sub, marginTop: 1 }}>{a.phone}</div>}
                           </div>
                         </div>
@@ -1803,6 +1817,17 @@ Your thoughts help us serve you better. 💛
             </div>
           </div>
         </div>
+      )}
+
+      {historyCustomer && (
+        <CustomerDetailModal
+          customer={historyCustomer}
+          employees={employees}
+          isMobile={isMobile}
+          setLoadError={setLoadError}
+          onClose={() => setHistoryCustomer(null)}
+          onVisitAdded={(created) => setAppts((prev) => [created, ...prev])}
+        />
       )}
 
       {editingAppt && editForm && (
@@ -3232,10 +3257,168 @@ function EmployeeBar({ employee, max, incentiveEnabled, incentivePercent, monthR
   );
 }
 
+/* ================= CUSTOMER DETAIL MODAL ================= */
+const nowHHMM = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+function CustomerDetailModal({ customer, employees = [], isMobile, onClose, onVisitAdded, setLoadError }) {
+  const [visits, setVisits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ service: "", price: "", employee: "", date: todayISO(), time: nowHHMM() });
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getCustomerHistory(customer.phone)
+      .then((res) => { if (!cancelled) setVisits(res.visits || []); })
+      .catch((err) => { if (!cancelled) setLoadError(err.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [customer.phone, setLoadError]);
+
+  const counted = visits.filter((v) => v.status !== "cancelled");
+  const totalPaid = counted.filter((v) => v.status === "payment done").reduce((s, v) => s + Number(v.price || 0), 0);
+  const lastVisit = counted[0]?.date;
+
+  // Add Visit dabate hi date/time abhi ka set ho jaye
+  const openAdd = () => {
+    setForm({ service: "", price: "", employee: "", date: todayISO(), time: nowHHMM() });
+    setAdding(true);
+  };
+
+  const submit = async () => {
+    if (!form.service.trim()) return;
+    setSaving(true);
+    try {
+      const payload = {
+        client: customer.name, phone: customer.phone, service: form.service.trim(),
+        employee: form.employee, date: form.date, time: form.time, price: form.price, paymentMode: "",
+      };
+      const res = await api.addAppointment(payload);
+      const created = { id: res.id, ...payload, status: "not visited", payment_mode: null, cash_amount: 0, online_amount: 0 };
+      setVisits([created, ...visits]);
+      if (onVisitAdded) onVisitAdded(created);
+      setAdding(false);
+    } catch (err) {
+      setLoadError("Failed to add visit. " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const payLabel = (v) => {
+    if (Number(v.cash_amount) > 0 && Number(v.online_amount) > 0) return "Cash + Online";
+    return v.payment_mode ? v.payment_mode.replace(/^\w/, (c) => c.toUpperCase()) : "";
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(26,18,28,0.65)", backdropFilter: "blur(2px)", zIndex: 100, display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? 0 : 20 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        ...card, width: "100%", maxWidth: isMobile ? "100%" : 520, maxHeight: isMobile ? "92vh" : "88vh",
+        display: "flex", flexDirection: "column", padding: 0, overflow: "hidden",
+        borderRadius: isMobile ? "28px 28px 0 0" : 22,
+      }}>
+        {/* Header */}
+        <div style={{ padding: "20px 22px 16px", borderBottom: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ width: 46, height: 46, borderRadius: "50%", background: customer.is_vip ? C.gold : C.goldLight, color: customer.is_vip ? "#fff" : C.plum, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, flexShrink: 0 }}>
+            {customer.name?.charAt(0).toUpperCase()}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontFamily: fontVoice, fontSize: 18, fontWeight: 600, color: C.ink }}>{customer.name}</span>
+              {customer.is_vip ? <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 8px", borderRadius: 20, backgroundColor: C.goldBg, color: "#997340" }}>VIP</span> : null}
+            </div>
+            <div style={{ fontSize: 13, color: C.sub, marginTop: 2 }}>{customer.phone}</div>
+          </div>
+          <button onClick={onClose} style={{ ...iconBtn, fontSize: 22, lineHeight: 1 }}>×</button>
+        </div>
+
+        {/* Summary */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, padding: "14px 22px" }}>
+          {[
+            ["Visits", counted.length],
+            ["Total Paid", money(totalPaid)],
+            ["Last Visit", lastVisit ? fmtDate(lastVisit) : "—"],
+          ].map(([label, val]) => (
+            <div key={label} style={{ background: "#FCFAF8", border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 12px" }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>{val}</div>
+              <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Visits list */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 22px 14px" }}>
+          {loading ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.sub, fontSize: 14 }}>
+              <Loader2 className="spinner" size={16} color={C.plum} /> Loading visits…
+            </div>
+          ) : visits.length === 0 ? (
+            <EmptyState icon={Calendar} title="No visits yet" description="Add the first visit below." />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {visits.map((v) => {
+                const badge = getStatusBadge(v.status);
+                return (
+                  <div key={v.id} style={{ padding: "12px 0", borderTop: `1px solid ${C.line}`, display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: C.ink }}>{v.service}</div>
+                      <div style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>{fmtDate(v.date)} · {fmtTime(v.time)}</div>
+                      {v.employee && <div style={{ fontSize: 11.5, color: C.gold, marginTop: 2, fontWeight: 500 }}>{v.employee}</div>}
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{v.price ? money(v.price) : "—"}</div>
+                      <span style={{ display: "inline-block", marginTop: 4, fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 8px", borderRadius: 20, backgroundColor: badge.bg, color: badge.text }}>{v.status}</span>
+                      {payLabel(v) && <div style={{ fontSize: 11, color: C.sub, marginTop: 3 }}>{payLabel(v)}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer: Add Visit button ya form */}
+        <div style={{ borderTop: `1px solid ${C.line}`, padding: isMobile ? "14px 22px calc(16px + env(safe-area-inset-bottom))" : "16px 22px", background: "#FDFBF9" }}>
+          {!adding ? (
+            <button className="vellora-btn-ghost" style={{ ...btnGhost, width: "100%", justifyContent: "center", padding: "13px 18px" }} onClick={openAdd}>
+              <Plus size={16} /> Add Visit
+            </button>
+          ) : (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <input className="vellora-input" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} style={inputStyle} />
+                <TimeInput value={form.time} onChange={(v) => setForm({ ...form, time: v })} />
+                <input className="vellora-input" placeholder="Service" value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} style={{ ...inputStyle, gridColumn: "1 / -1" }} autoFocus />
+                <input className="vellora-input" type="number" placeholder="Amount (₹)" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} style={inputStyle} />
+                <select className="vellora-input" value={form.employee} onChange={(e) => setForm({ ...form, employee: e.target.value })} style={inputStyle}>
+                  <option value="">Select staff</option>
+                  {employees.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+                <button className="vellora-btn-ghost" style={{ ...btnGhost, flex: 1, justifyContent: "center", opacity: saving ? 0.7 : 1 }} onClick={submit} disabled={saving}>
+                  {saving ? <Loader2 className="spinner" size={16} /> : <Check size={16} />}
+                  {saving ? "Saving..." : "Submit"}
+                </button>
+                <button onClick={() => setAdding(false)} style={{ ...btnGhost, flex: 1, justifyContent: "center", background: C.card, color: C.plum, border: `1px solid ${C.line}`, boxShadow: "none" }}>Cancel</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ================= CUSTOMERS ================= */
-function Customers({ setLoadError, isMobile }) {
+function Customers({ setLoadError, isMobile, employees, setAppts }) {
   const [customers, setCustomers] = useState([]);
   const [paymentSettings, setPaymentSettings] = useState({});
+  const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -3283,7 +3466,7 @@ function Customers({ setLoadError, isMobile }) {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {customers.map((c) => (
-                <div key={c.id} className="vellora-card" style={{ ...card, padding: isMobile ? "14px 16px" : "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                <div key={c.id} className="vellora-card" onClick={() => c.phone && setSelected(c)} style={{ ...card, cursor: c.phone ? "pointer" : "default", padding: isMobile ? "14px 16px" : "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                     <div style={{ width: 40, height: 40, borderRadius: "50%", background: c.is_vip ? C.gold : C.goldLight, color: c.is_vip ? "#fff" : C.plum, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: 15 }}>
                       {c.name?.charAt(0).toUpperCase()}
@@ -3313,6 +3496,17 @@ function Customers({ setLoadError, isMobile }) {
             </div>
           )}
         </>
+      )}
+      
+      {selected && (
+        <CustomerDetailModal
+          customer={{ name: selected.name, phone: selected.phone, is_vip: selected.is_vip }}
+          employees={employees}
+          isMobile={isMobile}
+          setLoadError={setLoadError}
+          onClose={() => setSelected(null)}
+          onVisitAdded={(created) => setAppts((prev) => [created, ...prev])}
+        />
       )}
     </div>
   );

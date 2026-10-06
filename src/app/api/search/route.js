@@ -20,10 +20,11 @@ export async function GET(req) {
 
   try {
     const [appointments] = await pool.query(
-      `SELECT id, client, phone, service, DATE_FORMAT(date, '%Y-%m-%d') AS date, TIME_FORMAT(time, '%H:%i') AS time, status
+      `SELECT MAX(id) AS id, client, phone, COUNT(*) AS visits, DATE_FORMAT(MAX(date), '%Y-%m-%d') AS date
        FROM appointments
        WHERE salon_id = ? AND (client LIKE ? OR phone LIKE ? OR service LIKE ?)
-       ORDER BY date DESC
+       GROUP BY client, phone
+       ORDER BY MAX(date) DESC
        LIMIT 5`,
       [user.salonId, like, like, like]
     );
