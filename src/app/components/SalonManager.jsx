@@ -3281,6 +3281,7 @@ function CustomerDetailModal({ customer, employees = [], isMobile, onClose, onVi
 
   const counted = visits.filter((v) => v.status !== "cancelled");
   const totalPaid = counted.filter((v) => v.status === "payment done").reduce((s, v) => s + Number(v.price || 0), 0);
+  const balance = counted.filter((v) => v.status === "visited" || v.status === "payment pending").reduce((s, v) => s + Number(v.price || 0), 0);
   const lastVisit = counted[0]?.date;
 
   // Add Visit dabate hi date/time abhi ka set ho jaye
@@ -3337,14 +3338,15 @@ function CustomerDetailModal({ customer, employees = [], isMobile, onClose, onVi
         </div>
 
         {/* Summary */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, padding: "14px 22px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: 10, padding: "14px 22px" }}>
           {[
             ["Visits", counted.length],
             ["Total Paid", money(totalPaid)],
+            ["Balance", money(balance), balance > 0],
             ["Last Visit", lastVisit ? fmtDate(lastVisit) : "—"],
-          ].map(([label, val]) => (
+          ].map(([label, val, warn]) => (
             <div key={label} style={{ background: "#FCFAF8", border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 12px" }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>{val}</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: warn ? C.red : C.ink }}>{val}</div>
               <div style={{ fontSize: 11, color: C.sub, marginTop: 2 }}>{label}</div>
             </div>
           ))}
