@@ -43,7 +43,7 @@ export async function PUT(req, { params }) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { status, paymentMode, cashAmount, onlineAmount, client, phone, service, employee, date, time, price } = body;
+    const { status, paymentMode, cashAmount, onlineAmount, client, phone, service, employee, date, time, price, balance } = body;
 
     // Edit mode — jab client/service/date/time bheja gaya ho (full appointment edit form se)
     const isEditMode = client !== undefined || service !== undefined || date !== undefined || time !== undefined;
@@ -52,6 +52,7 @@ export async function PUT(req, { params }) {
       if (!client || !service || !date || !time) {
         return NextResponse.json({ success: false, error: 'Client, service, date, time zaroori hain.' }, { status: 400 });
       }
+      const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
       let mode = paymentMode === 'cash' || paymentMode === 'online' ? paymentMode : null;
       let cash = 0;
       let online = 0;
@@ -82,9 +83,9 @@ export async function PUT(req, { params }) {
 
       const [result] = await pool.query(
         `UPDATE appointments
-         SET client = ?, phone = ?, service = ?, employee = ?, date = ?, time = ?, price = ?, payment_mode = ?, cash_amount = ?, online_amount = ?
+         SET client = ?, phone = ?, service = ?, employee = ?, date = ?, time = ?, price = ?, balance = ?, payment_mode = ?, cash_amount = ?, online_amount = ?
          WHERE id = ? AND salon_id = ?`,
-        [client, phone || null, service, employee || null, date, time, price || 0, mode, cash, online, id, user.salonId]
+        [client, cleanPhone || null, service, employee || null, date, time, price || 0, Number(balance) || 0, mode, cash, online, id, user.salonId]
       );
 
       if (result.affectedRows === 0) {
@@ -92,8 +93,8 @@ export async function PUT(req, { params }) {
       }
 
       try {
-        await syncCustomer(user.salonId, phone || null, client);
-        if (old?.phone && old.phone !== phone) await syncCustomer(user.salonId, old.phone, null);
+        await syncCustomer(user.salonId, cleanPhone || null, client);
+        if (old?.phone && old.phone !== cleanPhone) await syncCustomer(user.salonId, old.phone, null);
       } catch (e) { console.error('Customer sync error:', e.message); }
 
       return NextResponse.json({ success: true });

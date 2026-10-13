@@ -15,7 +15,7 @@ export async function GET(req) {
     const [rows] = await pool.query(
       `SELECT id, client, phone, service, employee,
               DATE_FORMAT(date, '%Y-%m-%d') AS date, TIME_FORMAT(time, '%H:%i') AS time,
-              price, payment_mode, cash_amount, online_amount, status
+              price, balance, payment_mode, cash_amount, online_amount, status
        FROM appointments
        WHERE salon_id = ? AND phone = ?
        ORDER BY date DESC, time DESC`,

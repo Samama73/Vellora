@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Calendar, Users, Wallet, Package, Image as ImageIcon, LayoutDashboard,
   LogOut, Plus, Trash2, Eye, EyeOff, Scissors, Check, Loader2, ChevronRight, MessageCircle, TrendingUp, Settings as SettingsIcon, Sparkles, Search, Bell, Banknote, Smartphone, Pencil
@@ -278,7 +278,7 @@ const primaryBtn = {
   display: "flex", justifyContent: "center", alignItems: "center", gap: 8
 };
 
-const card = { background: C.card, border: `1px solid ${C.line}`, borderRadius: 18, padding: "24px", boxShadow: "0 2px 8px -4px rgba(43,27,46,0.08)" };
+const card = { background: C.card, border: `1px solid ${C.line}`, borderRadius: 18, padding: "24px", boxShadow: "0 1px 2px rgba(43,27,46,0.04), 0 10px 28px -12px rgba(43,27,46,0.14)" };
 
 const btnGhost = { display: "flex", alignItems: "center", gap: 6, background: C.plum, color: "#fff", border: "none", padding: "10px 18px", borderRadius: 12, fontSize: 13.5, fontWeight: 500, cursor: "pointer", fontFamily: fontSans, boxShadow: "0 6px 16px -8px rgba(43,27,46,0.4)", transition: "all 0.2s ease" };
 
@@ -352,6 +352,7 @@ function SearchBar({ setTab, setFocusApptId, onPickCustomer }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const boxRef = useRef(null);
+  const [focused, setFocused] = useState(false);
 
   useEffect(() => {
     if (query.trim().length < 2) {
@@ -392,17 +393,46 @@ function SearchBar({ setTab, setFocusApptId, onPickCustomer }) {
 
   return (
     <div ref={boxRef} style={{ position: "relative", flex: 1, maxWidth: 480 }}>
-      <Search size={16} color={C.sub} style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)" }} />
+      <Search
+        size={17}
+        color={focused ? C.gold : C.sub}
+        style={{ position: "absolute", left: 18, top: "50%", transform: "translateY(-50%)", transition: "color 0.2s ease", pointerEvents: "none" }}
+      />
       <input
         value={query}
         onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => { setOpen(true); setFocused(true); }}
+        onBlur={() => setFocused(false)}
         placeholder="Search appointments, inventory, staff..."
-        style={{ width: "100%", padding: "12px 16px 12px 42px", fontSize: 13.5, borderRadius: 999, border: "none", outline: "none", fontFamily: fontSans, color: C.ink, boxSizing: "border-box", background: C.goldLight }}
+        style={{
+          width: "100%",
+          padding: "13px 44px 13px 46px",
+          fontSize: 14,
+          borderRadius: 999,
+          border: `1.5px solid ${focused ? C.gold : C.line}`,
+          outline: "none",
+          fontFamily: fontSans,
+          color: C.ink,
+          boxSizing: "border-box",
+          background: "#fff",
+          boxShadow: focused
+            ? "0 0 0 4px rgba(184,147,95,0.15), 0 8px 24px -10px rgba(43,27,46,0.25)"
+            : "0 2px 8px -4px rgba(43,27,46,0.12)",
+          transition: "all 0.25s ease",
+        }}
       />
+      {query && (
+        <button
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => { setQuery(""); setResults(null); }}
+          style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", width: 24, height: 24, borderRadius: "50%", border: "none", background: C.goldLight, color: C.sub, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          ✕
+        </button>
+      )}
 
       {open && query.trim().length >= 2 && (
-        <div style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, right: 0, background: C.card, borderRadius: 14, border: `1px solid ${C.line}`, boxShadow: "0 16px 40px -12px rgba(43,27,46,0.25)", zIndex: 50, maxHeight: 360, overflowY: "auto", padding: 8 }}>
+        <div style={{ position: "absolute", top: "calc(100% + 10px)", left: 0, right: 0, background: C.card, borderRadius: 18, border: `1px solid ${C.line}`, boxShadow: "0 20px 48px -14px rgba(43,27,46,0.3)", zIndex: 50, maxHeight: 360, overflowY: "auto", padding: 8, animation: "fadeIn 0.2s ease-out" }}>
           {loading && (
             <div style={{ padding: "14px 12px", display: "flex", alignItems: "center", gap: 8, color: C.sub, fontSize: 13 }}>
               <Loader2 className="spinner" size={14} /> Searching...
@@ -740,6 +770,7 @@ const NAV = [
   { id: "accounts", label: "Accounts", icon: Wallet, roles: ["admin", "superadmin"] },
   { id: "team", label: "Team & Inventory", icon: Package, roles: ["admin", "superadmin"] },
   { id: "attendance", label: "Attendance", icon: Calendar, roles: ["admin", "superadmin"] },
+  { id: "incentive", label: "Incentive", icon: Banknote, roles: ["admin", "superadmin"] },
   { id: "superadmin", label: "All Salons", icon: Users, roles: ["superadmin"] }
 ];
 
@@ -963,13 +994,21 @@ export default function SalonManager() {
 
   return (
     <div style={{
-      minHeight: "100vh", display: "flex", fontFamily: fontSans, color: C.ink,
+      minHeight: "100vh", display: "flex", fontFamily: fontSans, color: C.ink, isolation: "isolate",
       background: `
         radial-gradient(circle at 1px 1px, rgba(184,147,95,0.15) 1px, transparent 0) 0 0/24px 24px,
         ${C.ivory}
       `
     }}>
       <GlobalFonts />
+      <div aria-hidden style={{
+        position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",
+        background: `
+          radial-gradient(600px circle at 8% 0%, rgba(184,147,95,0.22), transparent 60%),
+          radial-gradient(520px circle at 100% 12%, rgba(43,27,46,0.10), transparent 60%),
+          radial-gradient(700px circle at 75% 100%, rgba(232,160,160,0.18), transparent 60%)
+        `
+      }} />
 
       {!isMobile && (
         <aside style={{ width: 260, background: C.plum, color: "#fff", display: "flex", flexDirection: "column", flexShrink: 0, boxShadow: "4px 0 24px rgba(0,0,0,0.04)" }}>
@@ -987,7 +1026,7 @@ export default function SalonManager() {
 
             <main onTouchStart={isMobile ? handleTouchStart : undefined} onTouchEnd={isMobile ? handleTouchEnd : undefined} style={{ flex: 1, padding: isMobile ? "14px 12px calc(84px + env(safe-area-inset-bottom))" : "40px 48px", overflowY: "auto", minWidth: 0, width: "100%" }}>
         {isMobile && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, padding: "env(safe-area-inset-top) 0 14px", borderBottom: `1px solid ${C.line}`, position: "sticky", top: 0, background: C.ivory, zIndex: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, padding: "env(safe-area-inset-top) 0 14px", borderBottom: `1px solid ${C.line}`, background: "rgba(251,249,246,0.85)", backdropFilter: "blur(10px)", zIndex: 20 }}>
             <button onClick={() => setDrawerOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", color: C.ink, padding: 4 }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
@@ -1046,6 +1085,7 @@ export default function SalonManager() {
           {tab === "accounts" && <Accounts salaries={salaries} setSalaries={setSalaries} employees={employees} setLoadError={setLoadError} isMobile={isMobile} />}
           {tab === "team" && <Team employees={employees} setEmployees={setEmployees} inventory={inventory} setInventory={setInventory} setLoadError={setLoadError} isMobile={isMobile} />}
           {tab === "attendance" && <Attendance employees={employees} setLoadError={setLoadError} isMobile={isMobile} />}
+          {tab === "incentive" && <Incentive setLoadError={setLoadError} />}
           {tab === "superadmin" && <SuperAdminPanel token={session.token} />}
         </div>
       </main>
@@ -1073,6 +1113,7 @@ export default function SalonManager() {
           setLoadError={setLoadError}
           onClose={() => setSearchCustomer(null)}
           onVisitAdded={(created) => setAppts((prev) => [created, ...prev])}
+          onBalanceChanged={(vs) => setAppts((prev) => mergeBalances(prev, vs))}
           onEditVisit={(v) => { setSearchCustomer(null); setTab("appointments"); setFocusApptId(v.id); }}
         />
       )}
@@ -1152,7 +1193,7 @@ function Dashboard({ appts, inventory, employees, isMobile, setTab }) {
 
   return (
     <div style={{ position: "relative" }}>
-      <PageHeader title="Dashboard Overview" sub="A comprehensive look at your salon's performance today." />
+      <PageHeader title="Dashboard Overview" />
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(auto-fit,minmax(200px,1fr))", gap: isMobile ? 10 : 16, marginBottom: isMobile ? 20 : 32 }}>
         {stats.map((s, idx) => {
@@ -1354,7 +1395,7 @@ function Appointments({ employees, appts, setAppts, setLoadError, isMobile, salo
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPayMode, setFilterPayMode] = useState("all"); // all | cash | online
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ client: "", phone: "", service: "", date: todayISO(), time: "10:00", employee: "", price: "", paymentMode: "" });
+  const [form, setForm] = useState({ client: "", phone: "", service: "", date: todayISO(), time: "10:00", employee: "", price: "", balance: "", paymentMode: "" });
 
   const add = async () => {
     if (!form.client || !form.service || !form.date || !form.time) return;
@@ -1362,7 +1403,7 @@ function Appointments({ employees, appts, setAppts, setLoadError, isMobile, salo
     try {
       const res = await api.addAppointment(form);
       setAppts([{ id: res.id, ...form, status: "not visited" }, ...appts]);
-      setForm({ client: "", phone: "", service: "", date: todayISO(), time: "10:00", employee: "", price: "", paymentMode: "" });
+      setForm({ client: "", phone: "", service: "", date: todayISO(), time: "10:00", employee: "", price: "", balance: "", paymentMode: "" });
       setShowForm(false);
     } catch (err) {
       setLoadError("Failed to save appointment. " + err.message);
@@ -1485,6 +1526,7 @@ Your thoughts help us serve you better. 💛
       time: a.time || "10:00",
       employee: a.employee || "",
       price: a.price || "",
+      balance: Number(a.balance) > 0 ? a.balance : "",
       paymentMode: (Number(a.cash_amount) > 0 && Number(a.online_amount) > 0) ? "split" : (a.payment_mode || ""),
       cashAmount: Number(a.cash_amount) > 0 ? a.cash_amount : "",
       onlineAmount: Number(a.online_amount) > 0 ? a.online_amount : "",
@@ -1546,10 +1588,30 @@ Your thoughts help us serve you better. 💛
     .filter((a) => filterStatus === "all" || a.status === filterStatus)
     .filter((a) => filterPayMode === "all" || a.payment_mode === filterPayMode)
     .sort((a, b) => b.date.localeCompare(a.date) || (a.time || "").localeCompare(b.time || ""));
+      const clientKey = (a) =>
+    a.phone ? String(a.phone).replace(/\D/g, "") : `name:${(a.client || "").trim().toLowerCase()}`;
+
+  const groups = useMemo(() => {
+    const map = new Map();
+    for (const a of filtered) {
+      const k = clientKey(a);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(a);
+    }
+    return [...map.entries()].map(([key, visits]) => {
+      const latest = [...visits].sort((x, y) =>
+        `${y.date} ${y.time || ""}`.localeCompare(`${x.date} ${x.time || ""}`)
+      )[0];
+      const balance = appts
+        .filter((v) => clientKey(v) === key && v.status !== "cancelled")
+        .reduce((s, v) => s + (Number(v.balance) || 0), 0);
+      return { key, latest, visitCount: visits.length, balance };
+    });
+  }, [filtered, appts]);
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
-      <PageHeader title="Appointments" sub="Manage client bookings, schedules, and payment statuses."
+      <PageHeader title="Appointments"
         action={<button className="vellora-btn-ghost" style={btnGhost} onClick={() => setShowForm((s) => !s)}>
           {showForm ? "Cancel" : <><Plus size={16} /> New Booking</>}
         </button>} />
@@ -1565,6 +1627,7 @@ Your thoughts help us serve you better. 💛
             <TimeInput value={form.time} onChange={(v) => setForm({ ...form, time: v })} />
             <input className="vellora-input" placeholder="Assigned Staff (Optional)" value={form.employee} onChange={(e) => setForm({ ...form, employee: e.target.value })} style={inputStyle} />
             <input className="vellora-input" placeholder="Estimated Price (₹)" type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} style={inputStyle} />
+            <input className="vellora-input" placeholder="Balance (₹, optional)" type="number" value={form.balance} onChange={(e) => setForm({ ...form, balance: e.target.value })} style={inputStyle} />
             <select className="vellora-input" value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value })} style={inputStyle}>
               <option value="">Payment Mode</option>
               {PAYMENT_MODES.map((m) => <option key={m} value={m}>{m.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
@@ -1614,7 +1677,7 @@ Your thoughts help us serve you better. 💛
         ) : isMobile ? (
           // Mobile: stacked cards instead of a table
           <div style={{ display: "flex", flexDirection: "column" }}>
-            {filtered.map((a, i) => {
+            {groups.map(({ latest: a, visitCount, balance }, i) => {
               const badge = getStatusBadge(a.status);
               return (
                 <div key={a.id} style={{ padding: "16px", borderTop: i === 0 ? "none" : `1px solid ${C.line}`, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1624,7 +1687,7 @@ Your thoughts help us serve you better. 💛
                         {a.client?.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <div onClick={() => a.phone && setHistoryCustomer({ name: a.client, phone: a.phone })} style={{ fontWeight: 600, fontSize: 14.5, color: C.ink, cursor: a.phone ? "pointer" : "default", textDecoration: a.phone ? "underline dotted" : "none" }}>{a.client}</div>
+                        <div onClick={() => a.phone && setHistoryCustomer({ name: a.client, phone: a.phone })} style={{ fontWeight: 600, fontSize: 14.5, color: C.ink, cursor: a.phone ? "pointer" : "default", textDecoration: a.phone ? "underline dotted" : "none" }}>{a.client}{visitCount > 1 && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: C.goldLight, color: "#997340", textDecoration: "none", display: "inline-block" }}>{visitCount} visits</span>}</div>
                         <div style={{ fontSize: 12.5, color: C.sub, marginTop: 1 }}>{a.service}</div>
                       </div>
                     </div>
@@ -1632,7 +1695,10 @@ Your thoughts help us serve you better. 💛
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, color: C.sub }}>
                     <span>{fmtDate(a.date)} · {fmtTime(a.time)}</span>
-                    <span style={{ fontWeight: 700, color: C.ink, fontSize: 14 }}>{a.price ? money(a.price) : "—"}</span>
+                    <span style={{ fontWeight: 700, color: C.ink, fontSize: 14 }}>
+                      {a.price ? money(a.price) : "—"}
+                      {balance > 0 && <span style={{ color: C.red, fontSize: 12, marginLeft: 8 }}>Bal {money(balance)}</span>}
+                    </span>
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                     <select className="vellora-input" value={a.status} onChange={(e) => setStatus(a.id, e.target.value)} style={{ ...inputStyle, flex: 1, padding: "7px 10px", fontSize: 12.5 }}>
@@ -1670,13 +1736,13 @@ Your thoughts help us serve you better. 💛
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#FCFAF8" }}>
-                  {["CLIENT", "SERVICE", "TIME", "STATUS", "PAYMENT MODE", "AMOUNT", ""].map((h) => (
+                  {["CLIENT", "SERVICE", "TIME", "STATUS", "PAYMENT MODE", "AMOUNT", "BALANCE", ""].map((h) => (
                     <th key={h} style={{ textAlign: "left", padding: "12px 20px", fontSize: 11, fontWeight: 700, letterSpacing: 0.6, color: C.sub, borderBottom: `1px solid ${C.line}` }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((a) => {
+                {groups.map(({ latest: a, visitCount, balance }) => {
                   const badge = getStatusBadge(a.status);
                   const cancelled = a.status === "cancelled";
                   return (
@@ -1687,7 +1753,7 @@ Your thoughts help us serve you better. 💛
                             {a.client?.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div onClick={() => a.phone && setHistoryCustomer({ name: a.client, phone: a.phone })} style={{ fontWeight: 600, fontSize: 13.5, color: C.ink, cursor: a.phone ? "pointer" : "default", textDecoration: a.phone ? "underline dotted" : "none" }}>{a.client}</div>
+                            <div onClick={() => a.phone && setHistoryCustomer({ name: a.client, phone: a.phone })} style={{ fontWeight: 600, fontSize: 13.5, color: C.ink, cursor: a.phone ? "pointer" : "default", textDecoration: a.phone ? "underline dotted" : "none" }}>{a.client}{visitCount > 1 && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: C.goldLight, color: "#997340", textDecoration: "none", display: "inline-block" }}>{visitCount} visits</span>}</div>
                             {a.phone && <div style={{ fontSize: 11.5, color: C.sub, marginTop: 1 }}>{a.phone}</div>}
                           </div>
                         </div>
@@ -1730,6 +1796,11 @@ Your thoughts help us serve you better. 💛
                           {a.price ? money(a.price) : "—"}
                         </span>
                       </td>
+                      <td style={{ padding: "16px 20px" }}>
+                        <span style={{ fontSize: 14.5, fontWeight: 700, color: balance > 0 ? C.red : C.sub }}>
+                          {balance > 0 ? money(balance) : "—"}
+                        </span>
+                      </td>
                       <td style={{ padding: "16px 20px", position: "relative" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
                           {getWhatsAppLink(a, salonName) && (
@@ -1754,7 +1825,7 @@ Your thoughts help us serve you better. 💛
         )}
 
         <div style={{ padding: "14px 20px", fontSize: 12.5, color: C.sub, borderTop: `1px solid ${C.line}` }}>
-          Showing {filtered.length} of {appts.length} appointments
+          Showing {groups.length} clients · {filtered.length} of {appts.length} appointments
         </div>
       </div>
 
@@ -1827,6 +1898,8 @@ Your thoughts help us serve you better. 💛
           setLoadError={setLoadError}
           onClose={() => setHistoryCustomer(null)}
           onVisitAdded={(created) => setAppts((prev) => [created, ...prev])}
+          onBalanceChanged={(vs) => setAppts((prev) => mergeBalances(prev, vs))}
+          onEditVisit={(v) => { setHistoryCustomer(null); openEdit(v); }}
         />
       )}
 
@@ -1850,6 +1923,7 @@ Your thoughts help us serve you better. 💛
               <input className="vellora-input" type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} style={inputStyle} />
               <TimeInput value={editForm.time} onChange={(v) => setEditForm({ ...editForm, time: v })} />
               <input className="vellora-input" placeholder="Price (₹)" type="number" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} style={inputStyle} />
+              <input className="vellora-input" placeholder="Balance (₹)" type="number" value={editForm.balance} onChange={(e) => setEditForm({ ...editForm, balance: e.target.value })} style={inputStyle} />
               <select className="vellora-input" value={editForm.paymentMode} onChange={(e) => setEditForm({ ...editForm, paymentMode: e.target.value })} style={inputStyle}>
                 <option value="">Payment Mode</option>
                 {PAYMENT_MODES.map((m) => <option key={m} value={m}>{m.replace(/^\w/, (c) => c.toUpperCase())}</option>)}
@@ -1889,19 +1963,36 @@ Your thoughts help us serve you better. 💛
 
 /* ================= MARKETING ================= */
 const MARKETING_TEMPLATES = [
-  { id: "t1", image: "/marketing/post1.jpg", rotate: -2, size: "large", editable: true,
-    namePos: { x: 0.5, y: 0.45, maxWidth: 0.5 }, offerPos: { x: 0.5, y: 0.85, maxWidth: 0.75 } },
-  { id: "t2", image: "/marketing/post2.jpg", rotate: 2, size: "medium", editable: true,
-    namePos: { x: 0.5, y: 0.45, maxWidth: 0.5 }, offerPos: { x: 0.5, y: 0.85, maxWidth: 0.75 } },
-  { id: "t3", image: "/marketing/post3.jpg", rotate: -1.5, size: "small", editable: true,
-    namePos: { x: 0.5, y: 0.45, maxWidth: 0.5 }, offerPos: { x: 0.5, y: 0.85, maxWidth: 0.75 } },
-  { id: "t4", image: "/marketing/post4.jpg", rotate: 2.5, size: "medium", editable: true,
-    namePos: { x: 0.5, y: 0.45, maxWidth: 0.5 }, offerPos: { x: 0.5, y: 0.85, maxWidth: 0.75 } },
-  { id: "t5", image: "/marketing/post5.jpg", rotate: -2, size: "medium", editable: true,
-    namePos: { x: 0.5, y: 0.45, maxWidth: 0.5 }, offerPos: { x: 0.5, y: 0.85, maxWidth: 0.75 } },
-  { id: "t6", image: "/marketing/post6.jpg", rotate: -1.5, size: "medium", editable: true,
-    namePos: { x: 0.5, y: 0.45, maxWidth: 0.5 }, offerPos: { x: 0.5, y: 0.85, maxWidth: 0.75 } },
+  { id: "t1", image: "/marketing/vellora-1.jpg", rotate: -2, size: "medium" },
+  { id: "t2", image: "/marketing/vellora-2.jpg", rotate: 2, size: "medium" },
+  { id: "t3", image: "/marketing/vellora-3.jpg", rotate: -1.5, size: "medium" },
+  { id: "t4", image: "/marketing/vellora-4.jpg", rotate: 2.5, size: "medium" },
 ];
+
+const compressImage = (file, maxSize = 1080, quality = 0.8) =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff"; // PNG transparent ho to black na ho jaye
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Image load nahi ho payi.")); };
+    img.src = url;
+  });
+
+const dataUrlToFile = async (dataUrl, name) => {
+  const blob = await (await fetch(dataUrl)).blob();
+  return new File([blob], name, { type: blob.type });
+};
 
 function Marketing({ user, isMobile }) {
   const [processing, setProcessing] = useState(null);
@@ -1909,6 +2000,15 @@ function Marketing({ user, isMobile }) {
   const [offerText, setOfferText] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
   const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState(null);
+
+  const [savedPosters, setSavedPosters] = useState([]);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    api.getPosters()
+      .then((res) => setSavedPosters(res.posters || []))
+      .catch(() => {});
+  }, []);
 
   const sizeMap = {
     large: { width: isMobile ? "100%" : 340 },
@@ -2011,17 +2111,39 @@ function Marketing({ user, isMobile }) {
     setProcessing(null);
   };
 
-  const handleUploadedFile = (e) => {
+  const openPoster = async (dataUrl) => {
+    const f = await dataUrlToFile(dataUrl, `${salonName.replace(/\s+/g, "-")}-poster.jpg`);
+    setUploadedFile(f);
+    setUploadedPreviewUrl(dataUrl);
+  };
+
+  const handleUploadedFile = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setUploadedFile(file);
-      setUploadedPreviewUrl(URL.createObjectURL(file));
+    e.target.value = ""; // same file dobara select ho sake
+    if (!file) return;
+    setUploading(true);
+    try {
+      const dataUrl = await compressImage(file);
+      const res = await api.addPoster(dataUrl);
+      setSavedPosters((prev) => [{ id: res.id, image_data: dataUrl }, ...prev]);
+      await openPoster(dataUrl);
+    } catch (err) {
+      alert(err.message || "Poster upload nahi hua.");
     }
-    e.target.value = ""; // reset input taaki same file dobara select ho sake
+    setUploading(false);
+  };
+
+  const removePoster = async (id) => {
+    if (!window.confirm("Ye poster delete karna hai?")) return;
+    try {
+      await api.deletePoster(id);
+      setSavedPosters((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      alert(err.message || "Delete nahi hua.");
+    }
   };
 
   const closeUploadedPreview = () => {
-    if (uploadedPreviewUrl) URL.revokeObjectURL(uploadedPreviewUrl);
     setUploadedFile(null);
     setUploadedPreviewUrl(null);
   };
@@ -2055,7 +2177,7 @@ function Marketing({ user, isMobile }) {
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
-      <PageHeader title="Marketing Hub" sub="Ready-to-share promotional posters for your salon." />
+      <PageHeader title="Marketing Hub" />
 
       <div style={{
         display: "flex",
@@ -2068,7 +2190,7 @@ function Marketing({ user, isMobile }) {
         {MARKETING_TEMPLATES.map((t, idx) => (
           <div
             key={t.id}
-            onClick={() => setEditingTemplate(t)}
+            onClick={() => openPoster(t.image)}
             style={{
               ...sizeMap[t.size],
               transform: isMobile ? "none" : `rotate(${t.rotate}deg)`,
@@ -2084,15 +2206,6 @@ function Marketing({ user, isMobile }) {
             <div style={{ background: C.card, padding: 10, borderRadius: 12, boxShadow: "0 12px 30px -10px rgba(43,27,46,0.25)", border: `1px solid ${C.line}` }}>
               <div style={{ position: "relative", borderRadius: 6, overflow: "hidden" }}>
                 <img src={t.image} alt="Marketing post" style={{ width: "100%", display: "block" }} />
-                <div style={{
-                  position: "absolute", bottom: 0, left: 0, right: 0,
-                  background: "linear-gradient(180deg, rgba(26,18,28,0) 0%, rgba(26,18,28,0.85) 100%)",
-                  padding: "24px 14px 12px", textAlign: "center",
-                }}>
-                  <span style={{ fontFamily: fontVoice, color: "#fff", fontSize: 15, fontWeight: 600, letterSpacing: 0.3, textShadow: "0 2px 6px rgba(0,0,0,0.4)" }}>
-                    {collabText}
-                  </span>
-                </div>
                 {processing === t.id && (
                   <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Loader2 className="spinner" size={28} color="#fff" />
@@ -2102,12 +2215,44 @@ function Marketing({ user, isMobile }) {
             </div>
           </div>
         ))}
+        {savedPosters.map((p, idx) => {
+          const rotations = [-2, 2, -1.5, 2.5, -2, 1.5];
+          const rotate = rotations[idx % rotations.length];
+          const position = MARKETING_TEMPLATES.length + idx; // templates ke baad wali position
+          return (
+            <div
+              key={p.id}
+              onClick={() => openPoster(p.image_data)}
+              style={{
+                ...sizeMap.medium,
+                transform: isMobile ? "none" : `rotate(${rotate}deg)`,
+                marginTop: !isMobile && position % 2 === 1 ? 30 : 0,
+                transition: "transform 0.25s ease, box-shadow 0.25s ease",
+                cursor: "pointer",
+                position: "relative",
+              }}
+              onMouseOver={(e) => { if (!isMobile) e.currentTarget.style.transform = "rotate(0deg) scale(1.04)"; e.currentTarget.style.zIndex = 10; }}
+              onMouseOut={(e) => { if (!isMobile) e.currentTarget.style.transform = `rotate(${rotate}deg)`; e.currentTarget.style.zIndex = 1; }}
+            >
+              <div style={{ background: C.card, padding: 10, borderRadius: 12, boxShadow: "0 12px 30px -10px rgba(43,27,46,0.25)", border: `1px solid ${C.line}` }}>
+                <img src={p.image_data} alt="Saved poster" style={{ width: "100%", display: "block", borderRadius: 6 }} />
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); removePoster(p.id); }}
+                style={{ position: "absolute", top: 18, right: 18, background: "rgba(26,18,28,0.75)", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <Trash2 size={14} color="#fff" />
+              </button>
+            </div>
+          );
+        })}
 
         <label
           className="vellora-card"
           style={{
             ...sizeMap.medium,
             cursor: "pointer",
+            pointerEvents: uploading ? "none" : "auto",
             display: "block",
             transform: isMobile ? "none" : "rotate(1deg)",
             transition: "transform 0.25s ease, box-shadow 0.25s ease",
@@ -2130,7 +2275,9 @@ function Marketing({ user, isMobile }) {
               <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.plum, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, boxShadow: "0 8px 20px -6px rgba(43,27,46,0.4)" }}>
                 <ImageIcon size={24} color={C.gold} />
               </div>
-              <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 600, color: C.ink, fontFamily: fontVoice }}>Upload Your Own Poster</p>
+              <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 600, color: C.ink, fontFamily: fontVoice }}>
+                {uploading ? "Saving..." : "Upload Your Own Poster"}
+              </p>
               <p style={{ margin: 0, fontSize: 12.5, color: C.sub, textAlign: "center", lineHeight: 1.5 }}>Already have a design? Upload it here and share directly.</p>
             </div>
           </div>
@@ -2279,7 +2426,7 @@ function Accounts({ salaries, setSalaries, employees, setLoadError, isMobile }) 
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
-      <PageHeader title="Accounts & Expenses" sub="Manage payroll processing and monitor operational expenses."
+      <PageHeader title="Accounts & Expenses"
         action={
           <div style={{ background: C.plum, color: "#fff", padding: "14px 20px", borderRadius: 16, boxShadow: "0 8px 20px -8px rgba(43,27,46,0.4)" }}>
             <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.7)", fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5 }}>Total Outflow</span>
@@ -2421,7 +2568,6 @@ function Attendance({ employees, setLoadError, isMobile }) {
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
       <PageHeader
         title="Staff Attendance"
-        sub="Mark daily attendance and track monthly presence."
         action={
           <div style={{ display: "flex", gap: 8, background: C.card, padding: 4, borderRadius: 12, border: `1px solid ${C.line}` }}>
             <button
@@ -2597,7 +2743,7 @@ function Team({ employees, setEmployees, inventory, setInventory, setLoadError, 
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
-      <PageHeader title="Resources & Management" sub="Oversee your staff members and monitor product inventory levels." />
+      <PageHeader title="Resources & Management"/>
       
       <div style={{ display: "flex", gap: 12, marginBottom: 24, background: C.card, padding: 6, borderRadius: 16, border: `1px solid ${C.line}`, width: "fit-content" }}>
         {["employees", "inventory"].map((s) => (
@@ -2878,103 +3024,153 @@ const fmtPeriodLabel = (p) => {
 };
 const PAY_FILTERS = [["all", "All"], ["cash", "Cash"], ["online", "Online"]];
 
-/* ================= REPORTS ================= */
+const defaultFor = (p) => (p === "day" ? todayISO() : p === "year" ? todayISO().slice(0, 4) : todayISO().slice(0, 7));
+const lastMonthISO = () => {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  return toLocalISO(d).slice(0, 7);
+};
+
+const monthStart = (d) => toLocalISO(new Date(d.getFullYear(), d.getMonth(), 1));
+const monthEnd = (d) => toLocalISO(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+const REPORT_PRESETS = {
+  today: () => { const t = todayISO(); return [t, t]; },
+  yesterday: () => { const d = new Date(); d.setDate(d.getDate() - 1); const y = toLocalISO(d); return [y, y]; },
+  thisMonth: () => { const n = new Date(); return [monthStart(n), monthEnd(n)]; },
+  lastMonth: () => { const n = new Date(); n.setDate(1); n.setMonth(n.getMonth() - 1); return [monthStart(n), monthEnd(n)]; },
+  thisYear: () => { const y = new Date().getFullYear(); return [`${y}-01-01`, `${y}-12-31`]; },
+};
+const PRESET_LABELS = [["today", "Today"], ["yesterday", "Yesterday"], ["thisMonth", "This Month"], ["lastMonth", "Last Month"], ["thisYear", "This Year"]];
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
 function Reports({ setLoadError }) {
-  const [period, setPeriod] = useState("month");
+  const [preset, setPreset] = useState("thisMonth");
+  const [range, setRange] = useState(() => { const [from, to] = REPORT_PRESETS.thisMonth(); return { from, to }; });
   const [payMode, setPayMode] = useState("all"); // all | cash | online
-  const [detailPeriod, setDetailPeriod] = useState("");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [incentiveEnabled, setIncentiveEnabled] = useState(false);
-  const [incentivePercent, setIncentivePercent] = useState(10);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    api.getReports(period)
+    api.getReportsRange(range.from, range.to)
       .then((res) => { if (!cancelled) setData(res); })
       .catch((err) => { if (!cancelled) setLoadError(err.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [period, setLoadError]);
+  }, [range.from, range.to, setLoadError]);
 
-  useEffect(() => {
-    let cancelled = false;
-    api.getSalonSettings()
-      .then((res) => {
-        if (cancelled) return;
-        setIncentiveEnabled(res.settings?.incentive_enabled ?? false);
-        setIncentivePercent(res.settings?.incentive_percent ?? 10);
-      })
-      .catch(() => {}); // incentive settings load na ho to bhi Reports normal chale
-    return () => { cancelled = true; };
-  }, []);
+  const pickPreset = (key) => {
+    const [from, to] = REPORT_PRESETS[key]();
+    setPreset(key); setRange({ from, to }); setData(null);
+  };
+  const changeDate = (field, v) => {
+    if (!v) return;
+    setPreset("custom"); setData(null);
+    setRange((r) => {
+      const n = { ...r, [field]: v };
+      if (n.from > n.to) { if (field === "from") n.to = v; else n.from = v; }
+      return n;
+    });
+  };
 
-  const lastMonthLabel = (() => {
-    const d = new Date();
-    d.setDate(1);
-    d.setMonth(d.getMonth() - 1);
-    return d.toLocaleString("en-IN", { month: "long", year: "numeric" });
-  })();
-  const lastMonthRows = data?.employeePerformanceLastMonth || [];
-  const lastMonthIncentive = (rev) => (Number(rev || 0) * Number(incentivePercent || 0)) / 100;
-  const lastMonthTotal = lastMonthRows.reduce((s, r) => s + lastMonthIncentive(r.revenue), 0);
+  const shiftMonth = (delta) => {
+    const [y, m] = range.from.split("-").map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    const start = monthStart(d);
+    const key = start === REPORT_PRESETS.thisMonth()[0] ? "thisMonth"
+              : start === REPORT_PRESETS.lastMonth()[0] ? "lastMonth"
+              : "month";
+    setPreset(key);
+    setData(null);
+    setRange({ from: start, to: monthEnd(d) });
+  };
 
-  const breakdown = data?.paymentBreakdown || [];
+  const [fy, fm] = range.from.split("-").map(Number);
+  const baseMonth = new Date(fy, fm - 1, 1);
+  const isFullMonth = range.from === monthStart(baseMonth) && range.to === monthEnd(baseMonth);
+  const monthLabel = isFullMonth ? `${MONTH_NAMES[fm - 1]} ${fy}` : "Pick a month";
+  const canGoNext = range.from.slice(0, 7) < todayISO().slice(0, 7);
+
+  const spanDays = Math.round((new Date(range.to) - new Date(range.from)) / 86400000) + 1;
+  const selected = range.from === range.to ? fmtDate(range.from) : `${fmtDate(range.from)} – ${fmtDate(range.to)}`;
+  const isCurrent = range.from <= todayISO() && todayISO() <= range.to;
+
   const payTotals = data?.paymentTotals || { cashCustomers: 0, cashRevenue: 0, onlineCustomers: 0, onlineRevenue: 0, unknownCustomers: 0, unknownRevenue: 0 };
+  const recv = data?.balanceReceived || { cash: 0, online: 0, total: 0 };
   const details = data?.paymentDetails || [];
-  const detailPeriods = [...new Set(details.map((d) => d.period))].sort().reverse();
-  const activePeriod = detailPeriods.includes(detailPeriod) ? detailPeriod : detailPeriods[0];
-  const shownDetails = details
-    .filter((d) => d.period === activePeriod)
-    .filter((d) => payMode === "cash" ? d.cash > 0 : payMode === "online" ? d.online > 0 : true);
+  const shownDetails = details.filter((d) => payMode === "cash" ? d.cash > 0 : payMode === "online" ? d.online > 0 : true);
   const detailCash = shownDetails.reduce((s, d) => s + d.cash, 0);
   const detailOnline = shownDetails.reduce((s, d) => s + d.online, 0);
   const hasUnknown = shownDetails.some((d) => d.unknown > 0);
 
-  // Filter ke hisaab se cards aur chart ka data nikaalo
   let shownRevenue = data?.totalRevenue || 0;
   let shownCustomers = data?.totalAppointments || 0;
-  const breakdownByPeriod = new Map(breakdown.map((b) => [b.period, b]));
-  let chartRows = (data?.revenueTrend || []).map((r) => {
-    const b = breakdownByPeriod.get(r.period);
-    return b ? { ...r, cashRevenue: b.cashRevenue, onlineRevenue: b.onlineRevenue } : r;
-    });
+  const trend = data?.trend || [];
+  let chartRows = trend.map((r) => ({ period: r.period, revenue: r.revenue, appointments: r.appointments, cashRevenue: r.cashRevenue, onlineRevenue: r.onlineRevenue }));
 
   if (payMode === "cash") {
     shownRevenue = payTotals.cashRevenue;
     shownCustomers = payTotals.cashCustomers;
-    chartRows = breakdown.map((r) => ({ period: r.period, revenue: r.cashRevenue, appointments: r.cashCustomers })).filter((r) => r.appointments > 0);
+    chartRows = trend.map((r) => ({ period: r.period, revenue: r.cashRevenue, appointments: r.cashCustomers }));
   } else if (payMode === "online") {
     shownRevenue = payTotals.onlineRevenue;
     shownCustomers = payTotals.onlineCustomers;
-    chartRows = breakdown.map((r) => ({ period: r.period, revenue: r.onlineRevenue, appointments: r.onlineCustomers })).filter((r) => r.appointments > 0);
+    chartRows = trend.map((r) => ({ period: r.period, revenue: r.onlineRevenue, appointments: r.onlineCustomers }));
   }
 
   const payLabel = payMode === "all" ? "" : payMode === "cash" ? " (cash)" : " (online)";
+  const pickerStyle = { ...inputStyle, width: "auto", padding: "9px 12px" };
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
-      <PageHeader title="Reports" sub="Revenue and employee performance overview."
+      <PageHeader title="Reports"
         action={
-          <div style={{ display: "flex", gap: 6, background: "#F2ECE7", padding: 4, borderRadius: 14 }}>
-            {[["day", "Day"], ["month", "Month"], ["year", "Year"]].map(([p, label]) => (
-              <button key={p} onClick={() => setPeriod(p)} style={{
-                padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 12.5,
-                fontWeight: 500, fontFamily: fontSans, background: period === p ? C.card : "transparent",
-                color: period === p ? C.plum : C.sub, boxShadow: period === p ? "0 4px 10px -4px rgba(43,27,46,0.25)" : "none",
-              }}>{label}</button>
-            ))}
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 4, background: "#F2ECE7", padding: 4, borderRadius: 14, flexWrap: "wrap" }}>
+              {PRESET_LABELS.map(([key, label]) => (
+                <button key={key} onClick={() => pickPreset(key)} style={{
+                  padding: "8px 14px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 12.5,
+                  fontWeight: 500, fontFamily: fontSans, background: preset === key ? C.card : "transparent",
+                  color: preset === key ? C.plum : C.sub, boxShadow: preset === key ? "0 4px 10px -4px rgba(43,27,46,0.25)" : "none",
+                }}>{label}</button>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 2, background: "#F2ECE7", padding: 4, borderRadius: 14 }}>
+              <button onClick={() => shiftMonth(-1)} style={{ border: "none", background: "transparent", cursor: "pointer", padding: "6px 12px", fontSize: 18, lineHeight: 1, color: C.plum, borderRadius: 10 }}>‹</button>
+              <span style={{ minWidth: 120, textAlign: "center", fontSize: 12.5, fontWeight: 600, color: C.ink, fontFamily: fontSans }}>{monthLabel}</span>
+              <button onClick={() => shiftMonth(1)} disabled={!canGoNext} style={{ border: "none", background: "transparent", cursor: canGoNext ? "pointer" : "not-allowed", opacity: canGoNext ? 1 : 0.3, padding: "6px 12px", fontSize: 18, lineHeight: 1, color: C.plum, borderRadius: 10 }}>›</button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="date" className="vellora-input" value={range.from} max={range.to}
+                onChange={(e) => changeDate("from", e.target.value)} style={pickerStyle} />
+              <span style={{ color: C.sub, fontSize: 13 }}>to</span>
+              <input type="date" className="vellora-input" value={range.to} min={range.from}
+                onChange={(e) => changeDate("to", e.target.value)} style={pickerStyle} />
+            </div>
           </div>
-        } />
+        }
+      />
+
+      {selected && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "12px 16px", marginBottom: 20, background: C.goldBg, border: `1px solid ${C.goldLight}`, borderRadius: 12 }}>
+          <Calendar size={16} color={C.gold} />
+          <span style={{ fontSize: 13.5, color: C.ink }}>
+            Showing report for <b>{selected}</b>
+          </span>
+          {isCurrent && (
+            <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", padding: "3px 9px", borderRadius: 20, background: C.greenBg, color: C.green }}>Current</span>
+          )}
+        </div>
+      )}
 
       {loading && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.sub, fontSize: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.sub, fontSize: 14, marginBottom: 16 }}>
           <Loader2 className="spinner" size={16} color={C.plum} /> Loading report…
         </div>
       )}
 
-            {/* Payment mode filter */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
         <span style={{ fontSize: 12.5, color: C.sub }}>Payment mode</span>
         <div style={{ display: "flex", gap: 6, background: "#F2ECE7", padding: 4, borderRadius: 14 }}>
@@ -2996,19 +3192,36 @@ function Reports({ setLoadError }) {
                 <Wallet size={20} color="#fff" />
               </div>
               <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{money(shownRevenue)}</div>
-              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>Total revenue</div>
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>{`Revenue · ${fmtPeriodLabel(selected)}`}</div>
             </div>
             <div className="vellora-card" style={card}>
               <div style={{ width: 42, height: 42, borderRadius: 12, background: "#8B5CF6", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
                 <Calendar size={20} color="#fff" />
               </div>
               <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{shownCustomers}</div>
-              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>{`Paid customers${payLabel}`}</div>
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>{`Paid customers${payLabel} · ${fmtPeriodLabel(selected)}`}</div>
+            </div>
+            <div className="vellora-card" style={card}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: "#D33535", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <Wallet size={20} color="#fff" />
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{money(data.totalBalance || 0)}</div>
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>{`Balance pending · ${fmtPeriodLabel(selected)} (${data.balanceCount || 0} clients)`}</div>
+            </div>
+            <div className="vellora-card" style={card}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <Banknote size={20} color="#fff" />
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{money(recv.total)}</div>
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>{`Balance received · ${fmtPeriodLabel(selected)}`}</div>
+              <div style={{ fontSize: 11.5, color: C.sub, marginTop: 2 }}>{`Cash ${money(recv.cash)} · Online ${money(recv.online)}`}</div>
             </div>
           </div>
 
           <div className="vellora-card" style={{ ...card, marginBottom: 20 }}>
-            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>Revenue trend</h3>
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>
+              {spanDays > 31 ? "Revenue · month by month" : spanDays > 1 ? "Revenue · day by day" : "Revenue · this day"}
+            </h3>
             <RevenueBarChart rows={chartRows} mode={payMode} />
           </div>
 
@@ -3039,106 +3252,62 @@ function Reports({ setLoadError }) {
               </div>
             )}
 
-              {details.length === 0 ? (
-                <EmptyState icon={Wallet} title="No payments yet" description="Appointments ko paid mark karne ke baad yahan naam ke saath cash/online dikhega." />
-              ) : (
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 12.5, color: C.sub }}>Period</span>
-                    <select className="vellora-input" value={activePeriod} onChange={(e) => setDetailPeriod(e.target.value)} style={{ ...inputStyle, width: "auto", padding: "8px 12px" }}>
-                      {detailPeriods.map((p) => <option key={p} value={p}>{fmtPeriodLabel(p)}</option>)}
-                    </select>
-                    <span style={{ fontSize: 12.5, color: C.sub }}>{shownDetails.length} booking{shownDetails.length !== 1 ? "s" : ""}</span>
-                  </div>
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                      <thead>
-                        <tr style={{ color: C.sub, textAlign: "left" }}>
-                          <th style={{ padding: "8px 6px", fontWeight: 500 }}>Client</th>
-                          <th style={{ padding: "8px 6px", fontWeight: 500 }}>Date</th>
-                          <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Cash</th>
-                          <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Online</th>
-                          {hasUnknown && <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Not recorded</th>}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {shownDetails.map((d) => (
-                          <tr key={d.id} style={{ borderTop: `1px solid ${C.line}` }}>
-                            <td style={{ padding: "10px 6px" }}>
-                              <div style={{ fontWeight: 600 }}>{d.client}</div>
-                              {d.service && <div style={{ fontSize: 11.5, color: C.sub }}>{d.service}</div>}
-                            </td>
-                            <td style={{ padding: "10px 6px", color: C.sub, whiteSpace: "nowrap" }}>{fmtPeriodLabel(d.date)}</td>
-                            <td style={{ padding: "10px 6px", textAlign: "right", fontWeight: 600, color: d.cash > 0 ? "#059669" : C.line }}>{d.cash > 0 ? money(d.cash) : "—"}</td>
-                            <td style={{ padding: "10px 6px", textAlign: "right", fontWeight: 600, color: d.online > 0 ? "#2563EB" : C.line }}>{d.online > 0 ? money(d.online) : "—"}</td>
-                            {hasUnknown && <td style={{ padding: "10px 6px", textAlign: "right", color: C.sub }}>{d.unknown > 0 ? money(d.unknown) : "—"}</td>}
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700 }}>
-                          <td style={{ padding: "10px 6px" }} colSpan={2}>Total</td>
-                          <td style={{ padding: "10px 6px", textAlign: "right", color: "#059669" }}>{money(detailCash)}</td>
-                          <td style={{ padding: "10px 6px", textAlign: "right", color: "#2563EB" }}>{money(detailOnline)}</td>
-                          {hasUnknown && <td />}
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+            {shownDetails.length === 0 ? (
+              <EmptyState icon={Wallet} title="No payments in this period" description="Is range me koi paid appointment nahi hai." />
+            ) : (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12.5, color: C.sub }}>{fmtPeriodLabel(selected)}</span>
+                  <span style={{ fontSize: 12.5, color: C.sub }}>· {shownDetails.length} booking{shownDetails.length !== 1 ? "s" : ""}</span>
                 </div>
-              )}
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ color: C.sub, textAlign: "left" }}>
+                        <th style={{ padding: "8px 6px", fontWeight: 500 }}>Client</th>
+                        <th style={{ padding: "8px 6px", fontWeight: 500 }}>Date</th>
+                        <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Cash</th>
+                        <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Online</th>
+                        {hasUnknown && <th style={{ padding: "8px 6px", fontWeight: 500, textAlign: "right" }}>Not recorded</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shownDetails.map((d) => (
+                        <tr key={d.id} style={{ borderTop: `1px solid ${C.line}` }}>
+                          <td style={{ padding: "10px 6px" }}>
+                            <div style={{ fontWeight: 600 }}>{d.client}</div>
+                            {d.service && <div style={{ fontSize: 11.5, color: C.sub }}>{d.service}</div>}
+                          </td>
+                          <td style={{ padding: "10px 6px", color: C.sub, whiteSpace: "nowrap" }}>{fmtPeriodLabel(d.date)}</td>
+                          <td style={{ padding: "10px 6px", textAlign: "right", fontWeight: 600, color: d.cash > 0 ? "#059669" : C.line }}>{d.cash > 0 ? money(d.cash) : "—"}</td>
+                          <td style={{ padding: "10px 6px", textAlign: "right", fontWeight: 600, color: d.online > 0 ? "#2563EB" : C.line }}>{d.online > 0 ? money(d.online) : "—"}</td>
+                          {hasUnknown && <td style={{ padding: "10px 6px", textAlign: "right", color: C.sub }}>{d.unknown > 0 ? money(d.unknown) : "—"}</td>}
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ borderTop: `2px solid ${C.line}`, fontWeight: 700 }}>
+                        <td style={{ padding: "10px 6px" }} colSpan={2}>Total</td>
+                        <td style={{ padding: "10px 6px", textAlign: "right", color: "#059669" }}>{money(detailCash)}</td>
+                        <td style={{ padding: "10px 6px", textAlign: "right", color: "#2563EB" }}>{money(detailOnline)}</td>
+                        {hasUnknown && <td />}
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="vellora-card" style={card}>
-            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>Employee performance</h3>
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: C.ink }}>{`Employee performance · ${fmtPeriodLabel(selected)}`}</h3>
             {data.employeePerformance.length === 0 && <EmptyState icon={Users} title="No data yet" description="Staff performance will appear here once appointments are completed and paid." />}
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {data.employeePerformance.map((e) => {
-                const monthRevenue = data.employeePerformanceMonth?.find((m) => m.employee === e.employee)?.revenue || 0;
-                return (
-                  <EmployeeBar
-                    key={e.employee}
-                    employee={e}
-                    max={data.employeePerformance[0]?.revenue || 1}
-                    incentiveEnabled={incentiveEnabled}
-                    incentivePercent={incentivePercent}
-                    monthRevenue={monthRevenue}
-                  />
-                );
-              })}
+              {data.employeePerformance.map((e) => (
+                <EmployeeBar key={e.employee} employee={e} max={data.employeePerformance[0]?.revenue || 1} />
+              ))}
             </div>
           </div>
-          
-          {incentiveEnabled && (
-            <div className="vellora-card" style={{ ...card, marginTop: 20 }}>
-              <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 600, color: C.ink }}>
-                Last month's incentive
-              </h3>
-              <p style={{ margin: "0 0 16px", fontSize: 12.5, color: C.sub }}>
-                {lastMonthLabel} · {incentivePercent}% of revenue
-              </p>
-              {lastMonthRows.length === 0 && (
-                <EmptyState icon={Users} title="No data for last month" description="Pichle mahine koi paid appointment nahi mili." />
-              )}
-              {lastMonthRows.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {lastMonthRows.map((r) => (
-                    <div key={r.employee} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
-                      <div>
-                        <div style={{ fontWeight: 500 }}>{r.employee}</div>
-                        <div style={{ fontSize: 11.5, color: C.sub }}>{money(r.revenue)} · {r.appointments} appts</div>
-                      </div>
-                      <div style={{ color: C.gold, fontWeight: 700 }}>{money(lastMonthIncentive(r.revenue))}</div>
-                    </div>
-                  ))}
-                  <div style={{ display: "flex", justifyContent: "space-between", borderTop: `2px solid ${C.line}`, paddingTop: 10, fontWeight: 700, fontSize: 13 }}>
-                    <span>Total incentive</span>
-                    <span style={{ color: C.gold }}>{money(lastMonthTotal)}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </>
       )}
     </div>
@@ -3146,7 +3315,9 @@ function Reports({ setLoadError }) {
 }
 
 function RevenueBarChart({ rows, mode = "all" }) {
-  if (!rows || rows.length === 0) return <EmptyState icon={TrendingUp} title="No revenue data yet" description="Once you mark appointments as paid, your revenue trend will show up here." />;
+  if (!rows || rows.length === 0 || rows.every((r) => !Number(r.revenue))) {
+    return <EmptyState icon={TrendingUp} title="No revenue in this period" description="Jab is range me appointments paid mark hongi, yahan revenue dikhega." />;
+  }
 
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const fmtPeriod = (p) => {
@@ -3163,11 +3334,13 @@ function RevenueBarChart({ rows, mode = "all" }) {
   const niceMax = Math.ceil(max / step) * step;
   const yTicks = niceMax / step;
 
-  const padLeft = 56, padTop = 30, padBottom = 60, height = 300, slot = 64;
+  const slot = rows.length > 20 ? 44 : 64;
+  const padLeft = 56, padTop = 30, padBottom = 60, height = 300;
   const width = Math.max(700, padLeft + rows.length * slot + 20);
   const chartH = height - padTop - padBottom;
   const barW = Math.min(56, slot - 16);
-  const labelEvery = Math.ceil(rows.length / 14);
+  const labelEvery = rows.length <= 16 ? 1 : 2;
+  const compact = rows.length > 12;
 
   const stacked = mode === "all" && rows.some((r) => r.cashRevenue !== undefined);
   const singleColor = mode === "cash" ? "#10B981" : mode === "online" ? "#3B82F6" : C.plum;
@@ -3220,11 +3393,17 @@ function RevenueBarChart({ rows, mode = "all" }) {
                 ) : (
                   <rect x={x} y={baseY - totalH} width={barW} height={totalH} fill={singleColor} rx={4} />
                 )}
-                <text x={x + barW / 2} y={baseY - totalH - 8} textAnchor="middle" fontSize="11" fontWeight="600" fill={C.ink}>{money(total)}</text>
+                {total > 0 && (
+                  <text x={x + barW / 2} y={baseY - totalH - 8} textAnchor="middle" fontSize="11" fontWeight="600" fill={C.ink}>
+                    {compact ? "₹" + shortMoney(total) : money(total)}
+                  </text>
+                )}
                 {showLabel && (
                   <>
                     <text x={x + barW / 2} y={baseY + 18} textAnchor="middle" fontSize="11.5" fontWeight="500" fill={C.ink}>{fmtPeriod(r.period)}</text>
-                    <text x={x + barW / 2} y={baseY + 34} textAnchor="middle" fontSize="10" fill={C.sub}>{r.appointments} booking{Number(r.appointments) !== 1 ? "s" : ""}</text>
+                    {!compact && (
+                      <text x={x + barW / 2} y={baseY + 34} textAnchor="middle" fontSize="10" fill={C.sub}>{r.appointments} booking{Number(r.appointments) !== 1 ? "s" : ""}</text>
+                    )}
                   </>
                 )}
               </g>
@@ -3236,9 +3415,8 @@ function RevenueBarChart({ rows, mode = "all" }) {
   );
 }
 
-function EmployeeBar({ employee, max, incentiveEnabled, incentivePercent, monthRevenue }) {
+function EmployeeBar({ employee, max }) {
   const pct = Math.min(100, (Number(employee.revenue) / max) * 100);
-  const incentiveAmount = (Number(monthRevenue || 0) * Number(incentivePercent || 0)) / 100;
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
@@ -3246,11 +3424,119 @@ function EmployeeBar({ employee, max, incentiveEnabled, incentivePercent, monthR
         <span style={{ color: C.sub }}>{money(employee.revenue)} · {employee.appointments} appts</span>
       </div>
       <div style={{ background: "#F2ECE7", borderRadius: 8, height: 8, overflow: "hidden" }}>
-          <div style={{ width: `${pct}%`, height: "100%", background: C.plum, borderRadius: 8 }} />
+        <div style={{ width: `${pct}%`, height: "100%", background: C.plum, borderRadius: 8 }} />
       </div>
-      {incentiveEnabled && (
-        <div style={{ fontSize: 11.5, color: C.gold, fontWeight: 600, marginTop: 4 }}>
-          This month's incentive ({incentivePercent}%): {money(incentiveAmount)}
+    </div>
+  );
+}
+
+function Incentive({ setLoadError }) {
+  const [settings, setSettings] = useState({ loaded: false, enabled: false, percent: 10 });
+  const [month, setMonth] = useState(lastMonthISO);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getSalonSettings()
+      .then((res) => {
+        if (cancelled) return;
+        setSettings({
+          loaded: true,
+          enabled: !!(res.settings?.incentive_enabled ?? false),
+          percent: res.settings?.incentive_percent ?? 10,
+        });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSettings((s) => ({ ...s, loaded: true }));
+        setLoadError(err.message);
+      });
+    return () => { cancelled = true; };
+  }, [setLoadError]);
+
+  useEffect(() => {
+    if (!settings.enabled) return;
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    api.getIncentive(month)
+      .then((res) => { if (!cancelled) setRows(res.rows || []); })
+      .catch((err) => { if (!cancelled) setError(err.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [month, settings.enabled]);
+
+  const pct = Number(settings.percent) || 0;
+  const incentiveOf = (rev) => (Number(rev || 0) * pct) / 100;
+  const total = rows.reduce((s, r) => s + incentiveOf(r.revenue), 0);
+
+  const [yy, mm] = month.split("-");
+  const thisYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 4 }, (_, i) => thisYear - i);
+  const selStyle = { ...inputStyle, width: "auto", padding: "9px 12px" };
+
+  return (
+    <div style={{ animation: "fadeIn 0.3s ease-out" }}>
+      <PageHeader
+        title="Employee Incentive"
+        action={settings.enabled ? (
+          <div style={{ display: "flex", gap: 8 }}>
+            <select className="vellora-input" value={mm}
+              onChange={(e) => setMonth(`${yy}-${e.target.value}`)} style={selStyle}>
+              {MONTH_NAMES.map((name, i) => (
+                <option key={name} value={String(i + 1).padStart(2, "0")}>{name}</option>
+              ))}
+            </select>
+            <select className="vellora-input" value={yy}
+              onChange={(e) => setMonth(`${e.target.value}-${mm}`)} style={selStyle}>
+              {yearOptions.map((y) => <option key={y} value={String(y)}>{y}</option>)}
+            </select>
+          </div>
+        ) : null}
+      />
+
+      {!settings.loaded ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.sub, fontSize: 14 }}>
+          <Loader2 className="spinner" size={16} color={C.plum} /> Loading…
+        </div>
+      ) : !settings.enabled ? (
+        <EmptyState icon={Banknote} title="Incentives are turned off" description="Settings mein jaake Employee Incentives enable karo." />
+      ) : (
+        <div className="vellora-card" style={card}>
+          <div style={{ marginBottom: 14 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.ink }}>{fmtPeriodLabel(month)}</h3>
+            <p style={{ margin: "4px 0 0", fontSize: 12.5, color: C.sub }}>{pct}% of revenue</p>
+          </div>
+
+          {error && <p style={{ color: C.red, fontSize: 13 }}>{error}</p>}
+          {loading && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.sub, fontSize: 13 }}>
+              <Loader2 className="spinner" size={14} color={C.plum} /> Loading…
+            </div>
+          )}
+
+          {!loading && rows.length === 0 && (
+            <EmptyState icon={Users} title="No data for this month" description="Is mahine koi paid appointment (employee ke saath) nahi mili." />
+          )}
+          {!loading && rows.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {rows.map((r) => (
+                <div key={r.employee} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{r.employee}</div>
+                    <div style={{ fontSize: 11.5, color: C.sub }}>{money(r.revenue)} · {r.appointments} appts</div>
+                  </div>
+                  <div style={{ color: C.gold, fontWeight: 700 }}>{money(incentiveOf(r.revenue))}</div>
+                </div>
+              ))}
+              <div style={{ display: "flex", justifyContent: "space-between", borderTop: `2px solid ${C.line}`, paddingTop: 10, fontWeight: 700, fontSize: 13 }}>
+                <span>Total incentive</span>
+                <span style={{ color: C.gold }}>{money(total)}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -3258,17 +3544,22 @@ function EmployeeBar({ employee, max, incentiveEnabled, incentivePercent, monthR
 }
 
 /* ================= CUSTOMER DETAIL MODAL ================= */
+const mergeBalances = (prev, visits) =>
+  prev.map((a) => { const v = visits.find((x) => x.id === a.id); return v ? { ...a, balance: v.balance } : a; });
 const nowHHMM = () => {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
-function CustomerDetailModal({ customer, employees = [], isMobile, onClose, onVisitAdded, setLoadError }) {
+function CustomerDetailModal({ customer, employees = [], isMobile, onClose, onVisitAdded, onEditVisit, onBalanceChanged, setLoadError }) {
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ service: "", price: "", employee: "", date: todayISO(), time: nowHHMM() });
+  const [receiving, setReceiving] = useState(false);
+  const [recvForm, setRecvForm] = useState({ amount: "", mode: "cash" });
+  const [recvSaving, setRecvSaving] = useState(false);
+  const [form, setForm] = useState({ service: "", price: "", balance: "", employee: "", date: todayISO(), time: nowHHMM() });
 
   useEffect(() => {
     let cancelled = false;
@@ -3281,12 +3572,29 @@ function CustomerDetailModal({ customer, employees = [], isMobile, onClose, onVi
 
   const counted = visits.filter((v) => v.status !== "cancelled");
   const totalPaid = counted.filter((v) => v.status === "payment done").reduce((s, v) => s + Number(v.price || 0), 0);
-  const balance = counted.filter((v) => v.status === "visited" || v.status === "payment pending").reduce((s, v) => s + Number(v.price || 0), 0);
+  const balance = counted.reduce((s, v) => s + (Number(v.balance) || 0), 0);
+  const submitReceive = async () => {
+    const amt = Number(recvForm.amount) || 0;
+    if (amt <= 0) return setLoadError("Amount daalo.");
+    if (amt > balance) return setLoadError("Amount baaki balance se zyada hai.");
+    setRecvSaving(true);
+    try {
+      await api.receiveBalance({ phone: customer.phone, client: customer.name, amount: amt, paymentMode: recvForm.mode, date: todayISO() });
+      const res = await api.getCustomerHistory(customer.phone);
+      setVisits(res.visits || []);
+      if (onBalanceChanged) onBalanceChanged(res.visits || []);
+      setReceiving(false);
+    } catch (err) {
+      setLoadError("Failed to record payment. " + err.message);
+    } finally {
+      setRecvSaving(false);
+    }
+  };
   const lastVisit = counted[0]?.date;
 
   // Add Visit dabate hi date/time abhi ka set ho jaye
   const openAdd = () => {
-    setForm({ service: "", price: "", employee: "", date: todayISO(), time: nowHHMM() });
+    setForm({ service: "", price: "", balance: "", employee: "", date: todayISO(), time: nowHHMM() });
     setAdding(true);
   };
 
@@ -3296,7 +3604,7 @@ function CustomerDetailModal({ customer, employees = [], isMobile, onClose, onVi
     try {
       const payload = {
         client: customer.name, phone: customer.phone, service: form.service.trim(),
-        employee: form.employee, date: form.date, time: form.time, price: form.price, paymentMode: "",
+        employee: form.employee, date: form.date, time: form.time, price: form.price, balance: form.balance, paymentMode: "",
       };
       const res = await api.addAppointment(payload);
       const created = { id: res.id, ...payload, status: "not visited", payment_mode: null, cash_amount: 0, online_amount: 0 };
@@ -3352,6 +3660,33 @@ function CustomerDetailModal({ customer, employees = [], isMobile, onClose, onVi
           ))}
         </div>
 
+        {balance > 0 && (
+          <div style={{ padding: "0 22px 12px" }}>
+            {!receiving ? (
+              <button className="vellora-btn-ghost" style={{ ...btnGhost, background: C.green, padding: "9px 16px" }}
+                onClick={() => { setRecvForm({ amount: String(balance), mode: "cash" }); setReceiving(true); }}>
+                <Banknote size={15} /> Receive Balance
+              </button>
+            ) : (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <input className="vellora-input" type="number" value={recvForm.amount}
+                  onChange={(e) => setRecvForm({ ...recvForm, amount: e.target.value })}
+                  style={{ ...inputStyle, width: 130 }} />
+                <select className="vellora-input" value={recvForm.mode}
+                  onChange={(e) => setRecvForm({ ...recvForm, mode: e.target.value })}
+                  style={{ ...inputStyle, width: "auto" }}>
+                  <option value="cash">Cash</option>
+                  <option value="online">Online</option>
+                </select>
+                <button className="vellora-btn-ghost" style={{ ...btnGhost, opacity: recvSaving ? 0.7 : 1 }} onClick={submitReceive} disabled={recvSaving}>
+                  {recvSaving ? "Saving..." : "Save"}
+                </button>
+                <button onClick={() => setReceiving(false)} style={{ ...btnGhost, background: C.card, color: C.plum, border: `1px solid ${C.line}`, boxShadow: "none" }}>Cancel</button>
+              </div>
+            )}
+          </div>
+        )}  
+        
         {/* Visits list */}
         <div style={{ flex: 1, overflowY: "auto", padding: "0 22px 14px" }}>
           {loading ? (
@@ -3373,8 +3708,14 @@ function CustomerDetailModal({ customer, employees = [], isMobile, onClose, onVi
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{v.price ? money(v.price) : "—"}</div>
+                      {Number(v.balance) > 0 && <div style={{ fontSize: 11.5, fontWeight: 600, color: C.red, marginTop: 2 }}>Balance {money(v.balance)}</div>}
                       <span style={{ display: "inline-block", marginTop: 4, fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 8px", borderRadius: 20, backgroundColor: badge.bg, color: badge.text }}>{v.status}</span>
                       {payLabel(v) && <div style={{ fontSize: 11, color: C.sub, marginTop: 3 }}>{payLabel(v)}</div>}
+                      {onEditVisit && (
+                        <button className="vellora-icon-btn" style={{ ...iconBtn, marginLeft: "auto", padding: 4 }} title="Edit visit" onClick={() => onEditVisit(v)}>
+                          <Pencil size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -3396,6 +3737,7 @@ function CustomerDetailModal({ customer, employees = [], isMobile, onClose, onVi
                 <TimeInput value={form.time} onChange={(v) => setForm({ ...form, time: v })} />
                 <input className="vellora-input" placeholder="Service" value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} style={{ ...inputStyle, gridColumn: "1 / -1" }} autoFocus />
                 <input className="vellora-input" type="number" placeholder="Amount (₹)" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} style={inputStyle} />
+                <input className="vellora-input" type="number" placeholder="Balance (₹, optional)" value={form.balance} onChange={(e) => setForm({ ...form, balance: e.target.value })} style={inputStyle} />
                 <select className="vellora-input" value={form.employee} onChange={(e) => setForm({ ...form, employee: e.target.value })} style={inputStyle}>
                   <option value="">Select staff</option>
                   {employees.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
@@ -3436,7 +3778,7 @@ function Customers({ setLoadError, isMobile, employees, setAppts }) {
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease-out" }}>
-      <PageHeader title="Customers" sub="Your client base, ranked by loyalty and spend." />
+      <PageHeader title="Customers"/>
 
       {loading && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, color: C.sub, fontSize: 14 }}>
@@ -3508,6 +3850,7 @@ function Customers({ setLoadError, isMobile, employees, setAppts }) {
           setLoadError={setLoadError}
           onClose={() => setSelected(null)}
           onVisitAdded={(created) => setAppts((prev) => [created, ...prev])}
+          onBalanceChanged={(vs) => setAppts((prev) => mergeBalances(prev, vs))}
         />
       )}
     </div>

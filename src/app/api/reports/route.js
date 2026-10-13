@@ -2,148 +2,140 @@ import pool from '@/lib/db';
 import { getUserFromRequest } from '@/lib/getUser';
 import { NextResponse } from 'next/server';
 
-// GET: revenue + employee performance report (period: day/month/year)
+// GET /api/reports/range?from=2026-10-01&to=2026-10-10
+const isoRe = /^\d{4}-\d{2}-\d{2}$/;
+const validDate = (s) => isoRe.test(s) && !Number.isNaN(Date.parse(s + 'T00:00:00Z'));
+const bad = (msg) => NextResponse.json({ success: false, error: msg }, { status: 400 });
+
 export async function GET(req) {
   const user = getUserFromRequest(req);
   if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
   try {
     const { searchParams } = new URL(req.url);
-    const period = searchParams.get('period') || 'month'; // day | month | year
+    const from = searchParams.get('from') || '';
+    const to = searchParams.get('to') || '';
+    if (!validDate(from) || !validDate(to)) return bad('Valid from/to date (YYYY-MM-DD) do.');
+    if (from > to) return bad('From date, To date se pehle honi chahiye.');
 
-    // Date ko group karne ka format decide karo period ke hisaab se
-    let dateFormat;
-    if (period === 'day') dateFormat = '%Y-%m-%d';
-    else if (period === 'year') dateFormat = '%Y';
-    else dateFormat = '%Y-%m'; // month (default)
+    const spanDays = Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000) + 1;
+    if (spanDays > 1830) return bad('Range bahut bada hai (max 5 saal).');
+    const monthly = spanDays > 31; // 31 din tak day-wise bars, usse bada to month-wise
 
-    // Revenue trend — date-wise grouped
-    const [revenueRows] = await pool.query(
-      `SELECT DATE_FORMAT(date, ?) AS period, SUM(price) AS revenue, COUNT(*) AS appointments
+    // Selected range ki saari paid appointments
+    const [paidRows] = await pool.query(
+      `SELECT id, client, service, DATE_FORMAT(date, '%Y-%m-%d') AS date_str,
+              payment_mode, price, cash_amount, online_amount
        FROM appointments
-       WHERE salon_id = ? AND status = 'payment done'
-       GROUP BY period
-       ORDER BY period ASC`,
-      [dateFormat, user.salonId]
+       WHERE salon_id = ? AND status = 'payment done' AND date BETWEEN ? AND ?
+       ORDER BY date ASC`,
+      [user.salonId, from, to]
     );
 
-    // Employee performance — employee-wise grouped, SIRF selected period (day/month/year) ka
+    // Chart ke buckets: 31 din tak -> har din, usse zyada -> har mahina
+    const bucketKeys = [];
+    const startD = new Date(from + 'T00:00:00Z');
+    const endD = new Date(to + 'T00:00:00Z');
+    if (!monthly) {
+      for (let d = new Date(startD); d <= endD; d.setUTCDate(d.getUTCDate() + 1)) {
+        bucketKeys.push(d.toISOString().slice(0, 10));
+      }
+    } else {
+      for (let d = new Date(Date.UTC(startD.getUTCFullYear(), startD.getUTCMonth(), 1)); d <= endD; d.setUTCMonth(d.getUTCMonth() + 1)) {
+        bucketKeys.push(d.toISOString().slice(0, 7));
+      }
+    }
+    const buckets = new Map(bucketKeys.map((k) => [k, {
+      period: k, revenue: 0, appointments: 0,
+      cashRevenue: 0, onlineRevenue: 0, unknownRevenue: 0,
+      cashCustomers: 0, onlineCustomers: 0, unknownCustomers: 0,
+    }]));
+
+    const paymentDetails = [];
+    for (const r of paidRows) {
+      const price = Number(r.price) || 0;
+      const cashAmt = Number(r.cash_amount) || 0;
+      const onlineAmt = Number(r.online_amount) || 0;
+      let cash = 0, online = 0, unknown = 0, side = 'unknown';
+
+      if (cashAmt > 0 && onlineAmt > 0) {
+        cash = cashAmt; online = onlineAmt;
+        side = onlineAmt >= cashAmt ? 'online' : 'cash'; // split: customer badi side me
+      } else if (r.payment_mode === 'cash') { cash = price; side = 'cash'; }
+      else if (r.payment_mode === 'online') { online = price; side = 'online'; }
+      else { unknown = price; }
+
+      const key = monthly ? r.date_str.slice(0, 7) : r.date_str;
+      const b = buckets.get(key);
+      if (b) {
+        b.revenue += price; b.appointments += 1;
+        b.cashRevenue += cash; b.onlineRevenue += online; b.unknownRevenue += unknown;
+        if (side === 'cash') b.cashCustomers += 1;
+        else if (side === 'online') b.onlineCustomers += 1;
+        else b.unknownCustomers += 1;
+      }
+      paymentDetails.push({ id: r.id, date: r.date_str, client: r.client, service: r.service, cash, online, unknown });
+    }
+    paymentDetails.reverse(); // naya pehle
+
+    const trend = [...buckets.values()];
+    const totalRevenue = trend.reduce((s, b) => s + b.revenue, 0);
+    const totalAppointments = trend.reduce((s, b) => s + b.appointments, 0);
+    const paymentTotals = trend.reduce((acc, b) => ({
+      cashCustomers: acc.cashCustomers + b.cashCustomers,
+      cashRevenue: acc.cashRevenue + b.cashRevenue,
+      onlineCustomers: acc.onlineCustomers + b.onlineCustomers,
+      onlineRevenue: acc.onlineRevenue + b.onlineRevenue,
+      unknownCustomers: acc.unknownCustomers + b.unknownCustomers,
+      unknownRevenue: acc.unknownRevenue + b.unknownRevenue,
+    }), { cashCustomers: 0, cashRevenue: 0, onlineCustomers: 0, onlineRevenue: 0, unknownCustomers: 0, unknownRevenue: 0 });
+
+    // Employee performance: sirf selected range
     const [employeeRows] = await pool.query(
       `SELECT employee, SUM(price) AS revenue, COUNT(*) AS appointments
        FROM appointments
        WHERE salon_id = ? AND status = 'payment done' AND employee IS NOT NULL AND employee != ''
-         AND DATE_FORMAT(date, ?) = DATE_FORMAT(CURDATE(), ?)
+         AND date BETWEEN ? AND ?
        GROUP BY employee
        ORDER BY revenue DESC`,
-      [user.salonId, dateFormat, dateFormat]
+      [user.salonId, from, to]
     );
 
-    // Employee performance — SIRF current calendar month (incentive hamesha monthly hota hai, period selector se independent)
-    const [employeeMonthRows] = await pool.query(
-      `SELECT employee, SUM(price) AS revenue
+    // Baaki balance: selected range ki appointments ka (cancelled chhodkar)
+    const [[balanceRow]] = await pool.query(
+      `SELECT COALESCE(SUM(balance), 0) AS total,
+              COUNT(DISTINCT COALESCE(NULLIF(phone, ''), CONCAT('name:', LOWER(TRIM(client))))) AS cnt
        FROM appointments
-       WHERE salon_id = ? AND status = 'payment done' AND employee IS NOT NULL AND employee != ''
-         AND DATE_FORMAT(date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')
-       GROUP BY employee`,
-      [user.salonId]
+       WHERE salon_id = ? AND balance > 0 AND status <> 'cancelled'
+         AND date BETWEEN ? AND ?`,
+      [user.salonId, from, to]
     );
 
-        // Employee performance — pichla calendar month (last month ka incentive dekhne ke liye)
-    const [employeeLastMonthRows] = await pool.query(
-      `SELECT employee, SUM(price) AS revenue, COUNT(*) AS appointments
-       FROM appointments
-       WHERE salon_id = ? AND status = 'payment done' AND employee IS NOT NULL AND employee != ''
-         AND DATE_FORMAT(date, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m')
-       GROUP BY employee
-       ORDER BY revenue DESC`,
-      [user.salonId]
+    // Selected range me purana balance kitna wapas mila
+    const [[recv]] = await pool.query(
+      `SELECT COALESCE(SUM(CASE WHEN payment_mode = 'cash' THEN amount END), 0) AS cash,
+              COALESCE(SUM(CASE WHEN payment_mode = 'online' THEN amount END), 0) AS online,
+              COUNT(*) AS cnt
+       FROM balance_payments
+       WHERE salon_id = ? AND DATE(paid_on) BETWEEN ? AND ?`,
+      [user.salonId, from, to]
     );
-
-    // Payment mode breakdown — har paid appointment alag se aayegi, split ka cash/online amount alag-alag ginenge
-    const [modeRows] = await pool.query(
-      `SELECT DATE_FORMAT(date, ?) AS period,
-              id,
-              client,
-              service,
-              DATE_FORMAT(date, '%Y-%m-%d') AS date_str,
-              payment_mode,
-              price,
-              cash_amount,
-              online_amount
-       FROM appointments
-       WHERE salon_id = ? AND status = 'payment done'
-       ORDER BY date ASC`,
-      [dateFormat, user.salonId]
-    );
-
-    const breakdownMap = new Map();
-    for (const r of modeRows) {
-      if (!breakdownMap.has(r.period)) {
-        breakdownMap.set(r.period, {
-          period: r.period,
-          cashCustomers: 0, cashRevenue: 0,
-          onlineCustomers: 0, onlineRevenue: 0,
-          unknownCustomers: 0, unknownRevenue: 0,
-        });
-      }
-      const row = breakdownMap.get(r.period);
-      const price = Number(r.price) || 0;
-      const cashAmt = Number(r.cash_amount) || 0;
-      const onlineAmt = Number(r.online_amount) || 0;
-      const mode = r.payment_mode;
-
-      if (cashAmt > 0 && onlineAmt > 0) {
-        // Split booking: amounts alag-alag, customer sirf badi wali side me
-        row.cashRevenue += cashAmt;
-        row.onlineRevenue += onlineAmt;
-        if (onlineAmt >= cashAmt) row.onlineCustomers += 1;
-        else row.cashCustomers += 1;
-      } else if (mode === 'cash') {
-        row.cashCustomers += 1; row.cashRevenue += price;
-      } else if (mode === 'online') {
-        row.onlineCustomers += 1; row.onlineRevenue += price;
-      } else {
-        row.unknownCustomers += 1; row.unknownRevenue += price;
-      }
-    }
-    // Naam ke saath detail: har paid booking ka cash/online amount alag
-    const paymentDetails = modeRows.map((r) => {
-      const price = Number(r.price) || 0;
-      const cashAmt = Number(r.cash_amount) || 0;
-      const onlineAmt = Number(r.online_amount) || 0;
-      let cash = 0, online = 0, unknown = 0;
-      if (cashAmt > 0 && onlineAmt > 0) { cash = cashAmt; online = onlineAmt; }
-      else if (r.payment_mode === 'cash') cash = price;
-      else if (r.payment_mode === 'online') online = price;
-      else unknown = price;
-      return { id: r.id, period: r.period, date: r.date_str, client: r.client, service: r.service, cash, online, unknown };
-    }).sort((a, b) => b.date.localeCompare(a.date));
-
-    const paymentBreakdown = [...breakdownMap.values()].sort((a, b) => a.period.localeCompare(b.period));
-
-    const paymentTotals = paymentBreakdown.reduce((acc, r) => ({
-      cashCustomers: acc.cashCustomers + r.cashCustomers,
-      cashRevenue: acc.cashRevenue + r.cashRevenue,
-      onlineCustomers: acc.onlineCustomers + r.onlineCustomers,
-      onlineRevenue: acc.onlineRevenue + r.onlineRevenue,
-      unknownCustomers: acc.unknownCustomers + r.unknownCustomers,
-      unknownRevenue: acc.unknownRevenue + r.unknownRevenue,
-    }), { cashCustomers: 0, cashRevenue: 0, onlineCustomers: 0, onlineRevenue: 0, unknownCustomers: 0, unknownRevenue: 0 });
-
-    // Total summary
-    const totalRevenue = revenueRows.reduce((sum, r) => sum + Number(r.revenue), 0);
-    const totalAppointments = revenueRows.reduce((sum, r) => sum + Number(r.appointments), 0);
 
     return NextResponse.json({
       success: true,
-      period,
+      from,
+      to,
+      monthly,
       totalRevenue,
       totalAppointments,
-      revenueTrend: revenueRows,
+      totalBalance: Number(balanceRow.total) || 0,
+      balanceCount: Number(balanceRow.cnt) || 0,
+      balanceReceived: {
+        cash: Number(recv.cash), online: Number(recv.online),
+        total: Number(recv.cash) + Number(recv.online), count: Number(recv.cnt),
+      },
+      trend,
       employeePerformance: employeeRows,
-      employeePerformanceMonth: employeeMonthRows,
-      employeePerformanceLastMonth: employeeLastMonthRows,
-      paymentBreakdown,
       paymentTotals,
       paymentDetails,
     });

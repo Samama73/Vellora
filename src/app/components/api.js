@@ -32,12 +32,15 @@ export const api = {
     request("/auth/register", { method: "POST", body: { salonName, name, username, password, email, accessCode, phone } }),
 
   getAppointments: () => request("/appointments"),
-  getReports: (period) => request(`/reports?period=${period}`),
+  getReports: (period, value = "") => request(`/reports?period=${period}${value ? `&value=${encodeURIComponent(value)}` : ""}`),
+  getReportsRange: (from, to) => request(`/reports?from=${from}&to=${to}`),
+  getIncentive: (month = "") => request(`/reports/incentive${month ? `?month=${month}` : ""}`),
   getSettings: () => request("/settings"),
   updateSettings: (payload) => request("/settings", { method: "PUT", body: payload }),
   getSalonSettings: () => request("/salon-settings"),
   updateSalonSettings: (payload) => request("/salon-settings", { method: "PUT", body: payload }),
   addAppointment: (payload) => request("/appointments", { method: "POST", body: payload }),
+  receiveBalance: (payload) => request("/balance-payments", { method: "POST", body: payload }),
   updateAppointmentStatus: (id, status, paymentMode) => request(`/appointments/${id}`, { method: "PUT", body: { status, paymentMode } }),
   updateAppointment: (id, payload) => request(`/appointments/${id}`, { method: "PUT", body: payload }),
   deleteAppointment: (id) => request(`/appointments/${id}`, { method: "DELETE" }),
@@ -60,6 +63,9 @@ export const api = {
 
   getCustomers: () => request("/customers"),
   getCustomerHistory: (phone) => request(`/customers/history?phone=${encodeURIComponent(phone)}`),
+  getPosters: () => request("/marketing"),
+  addPoster: (image) => request("/marketing", { method: "POST", body: { image } }),
+  deletePoster: (id) => request(`/marketing/${id}`, { method: "DELETE" }),
   search: (q) => request(`/search?q=${encodeURIComponent(q)}`),
 };
 
