@@ -2000,6 +2000,7 @@ function Marketing({ user, isMobile }) {
   const [offerText, setOfferText] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
   const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState(null);
+  const [uploadedShareUrl, setUploadedShareUrl] = useState(null);
 
   const [savedPosters, setSavedPosters] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -2111,10 +2112,11 @@ function Marketing({ user, isMobile }) {
     setProcessing(null);
   };
 
-  const openPoster = async (dataUrl) => {
+  const openPoster = async (dataUrl, shareUrl = null) => {
     const f = await dataUrlToFile(dataUrl, `${salonName.replace(/\s+/g, "-")}-poster.jpg`);
     setUploadedFile(f);
     setUploadedPreviewUrl(dataUrl);
+    setUploadedShareUrl(shareUrl);
   };
 
   const handleUploadedFile = async (e) => {
@@ -2126,7 +2128,7 @@ function Marketing({ user, isMobile }) {
       const dataUrl = await compressImage(file);
       const res = await api.addPoster(dataUrl);
       setSavedPosters((prev) => [{ id: res.id, image_data: dataUrl }, ...prev]);
-      await openPoster(dataUrl);
+      await openPoster(dataUrl, `${window.location.origin}/p/${res.id}`);
     } catch (err) {
       alert(err.message || "Poster upload nahi hua.");
     }
@@ -2146,19 +2148,28 @@ function Marketing({ user, isMobile }) {
   const closeUploadedPreview = () => {
     setUploadedFile(null);
     setUploadedPreviewUrl(null);
+    setUploadedShareUrl(null);
   };
 
   // Ye function seedha button-click se hi call hoga — isliye share() ka user-gesture rule pura hoga
   const handleShareUploaded = async () => {
     if (!uploadedFile) return;
+    const isPhone = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const openWhatsAppLink = () => {
+      if (!uploadedShareUrl) return handleDownloadUploaded();
+      const msg = `Check out ${salonName}!\n${uploadedShareUrl}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+    };
+
+    // Laptop/desktop pe seedha WhatsApp link, Windows ke share panel pe bharosa nahi
+    if (!isPhone) return openWhatsAppLink();
+
     const shareFile = new File([uploadedFile], `${salonName.replace(/\s+/g, "-")}-poster.jpg`, { type: uploadedFile.type });
     try {
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [shareFile] })) {
-        await navigator.share({
-          files: [shareFile],
-          title: `${salonName} Offer`,
-          text: `Check out ${salonName}!`,
-        });
+        await navigator.share({ files: [shareFile], title: `${salonName} Offer`, text: `Check out ${salonName}!` });
+      } else {
+        openWhatsAppLink();
       }
     } catch (err) {
       if (err.name !== "AbortError") console.error("Share fail hua:", err);
@@ -2190,7 +2201,7 @@ function Marketing({ user, isMobile }) {
         {MARKETING_TEMPLATES.map((t, idx) => (
           <div
             key={t.id}
-            onClick={() => openPoster(t.image)}
+            onClick={() => openPoster(t.image, `${window.location.origin}${t.image}`)}
             style={{
               ...sizeMap[t.size],
               transform: isMobile ? "none" : `rotate(${t.rotate}deg)`,
@@ -2222,7 +2233,7 @@ function Marketing({ user, isMobile }) {
           return (
             <div
               key={p.id}
-              onClick={() => openPoster(p.image_data)}
+              onClick={() => openPoster(p.image_data, `${window.location.origin}/p/${p.id}`)}
               style={{
                 ...sizeMap.medium,
                 transform: isMobile ? "none" : `rotate(${rotate}deg)`,
