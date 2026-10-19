@@ -2154,22 +2154,12 @@ function Marketing({ user, isMobile }) {
   // Ye function seedha button-click se hi call hoga — isliye share() ka user-gesture rule pura hoga
   const handleShareUploaded = async () => {
     if (!uploadedFile) return;
-    const isPhone = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const openWhatsAppLink = () => {
-      if (!uploadedShareUrl) return handleDownloadUploaded();
-      const msg = `Check out ${salonName}!\n${uploadedShareUrl}`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
-    };
-
-    // Laptop/desktop pe seedha WhatsApp link, Windows ke share panel pe bharosa nahi
-    if (!isPhone) return openWhatsAppLink();
-
     const shareFile = new File([uploadedFile], `${salonName.replace(/\s+/g, "-")}-poster.jpg`, { type: uploadedFile.type });
     try {
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [shareFile] })) {
-        await navigator.share({ files: [shareFile], title: `${salonName} Offer`, text: `Check out ${salonName}!` });
+        await navigator.share({ files: [shareFile] });
       } else {
-        openWhatsAppLink();
+        handleDownloadUploaded();
       }
     } catch (err) {
       if (err.name !== "AbortError") console.error("Share fail hua:", err);
@@ -2184,6 +2174,34 @@ function Marketing({ user, isMobile }) {
     a.download = `${salonName.replace(/\s+/g, "-")}-poster.jpg`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const copyPosterToClipboard = async () => {
+  // Clipboard sirf PNG leta hai, isliye canvas se PNG banao
+  const pngBlob = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      c.getContext("2d").drawImage(img, 0, 0);
+      c.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob fail"))), "image/png");
+    };
+    img.onerror = reject;
+    img.src = uploadedPreviewUrl;
+  });
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob })]);
+};
+
+  const handleCopyForWebWhatsApp = async () => {
+    try {
+      await copyPosterToClipboard();
+      alert("Poster copy ho gaya! OK dabao, WhatsApp khulega. Customer ka chat kholo, Ctrl+V dabao, phir Send karo.");
+      window.location.href = "whatsapp://"; // WhatsApp Desktop app kholta hai
+    } catch (err) {
+      console.error("Clipboard copy fail:", err);
+      handleDownloadUploaded(); // fallback: image download
+    }
   };
 
   return (
@@ -2396,6 +2414,12 @@ function Marketing({ user, isMobile }) {
                 Download
               </button>
             </div>
+              <button
+                onClick={handleCopyForWebWhatsApp}
+                style={{ ...btnGhost, width: "100%", justifyContent: "center", padding: "10px 0", marginTop: 10, background: C.card, color: C.plum, border: `1px solid ${C.line}`, boxShadow: "none", fontSize: 13 }}
+              >
+                Share nahi ho raha? Copy karke WhatsApp Web kholo
+            </button>
           </div>
         </div>
       )}
