@@ -6,6 +6,7 @@ import {
 
 } from "lucide-react";
 import { api, saveSession, loadSession, clearSession } from "./api";
+import { isNative, nativeShareImage } from "@/lib/nativeShare";
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false);
@@ -378,7 +379,11 @@ function SearchBar({ setTab, setFocusApptId, onPickCustomer }) {
       if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   const goTo = (tabId, apptId) => {
@@ -870,7 +875,10 @@ export default function SalonManager() {
   const visibleNav = NAV.filter((n) => n.roles.includes(user.role));
   const tabOrder = visibleNav.map((n) => n.id);
 
-  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchStart = (e) => {
+    if (e.target.closest && e.target.closest("[data-noswipe]")) { touchStartX.current = null; return; }
+    touchStartX.current = e.touches[0].clientX;
+  };
   const handleTouchEnd = (e) => {
     if (touchStartX.current === null || !isMobile) return;
     const deltaX = e.changedTouches[0].clientX - touchStartX.current;
@@ -1045,7 +1053,11 @@ export default function SalonManager() {
         )}
 
         
-
+        {isMobile && (
+          <div style={{ marginBottom: 16 }}>
+            <SearchBar setTab={setTab} setFocusApptId={setFocusApptId} onPickCustomer={setSearchCustomer} />
+          </div>
+        )}
 
         {!isMobile && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, gap: 16 }}>
@@ -1077,7 +1089,7 @@ export default function SalonManager() {
         <div key={tab} style={{ animation: "fadeIn 0.22s ease-out" }}>
           {tab === "dashboard" && <Dashboard appts={appts} inventory={inventory} employees={employees} isMobile={isMobile} setTab={setTab} />}
           {tab === "appointments" && <Appointments employees={employees} appts={appts} setAppts={setAppts} setLoadError={setLoadError} isMobile={isMobile} salonName={user.salonName || "our salon"} paymentSettings={paymentSettings} focusApptId={focusApptId} setFocusApptId={setFocusApptId} />}
-          {tab === "reports" && <Reports setLoadError={setLoadError} />}
+          {tab === "reports" && <Reports setLoadError={setLoadError} isMobile={isMobile} />}
           {tab === "customers" && <Customers setLoadError={setLoadError} isMobile={isMobile} employees={employees} setAppts={setAppts} />}
           {tab === "settings" && <PaymentSettings settings={paymentSettings} setPaymentSettings={setPaymentSettings} setLoadError={setLoadError} isMobile={isMobile} />}
           {tab === "general-settings" && <Settings isMobile={isMobile} />}
@@ -1092,7 +1104,7 @@ export default function SalonManager() {
 
       {isMobile && (
         <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, minHeight: 64, background: "rgba(255,255,255,0.92)", backdropFilter: "blur(10px)", borderTop: `1px solid ${C.line}`, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 6px calc(8px + env(safe-area-inset-bottom))", zIndex: 30, boxShadow: "0 -8px 24px rgba(0,0,0,0.04)" }}>
-          {visibleNav.slice(0, 5).map((n) => {
+          {visibleNav.slice(0, visibleNav.length > 5 ? 4 : 5).map((n) => {
             const Icon = n.icon;
             const active = tab === n.id;
             return (
@@ -1102,6 +1114,12 @@ export default function SalonManager() {
               </button>
             );
           })}
+          {visibleNav.length > 5 && (
+            <button onClick={() => setDrawerOpen(true)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flex: 1, minWidth: 0, background: "none", border: "none", borderRadius: 12, cursor: "pointer", color: C.sub, padding: "5px 2px" }}>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
+              <span style={{ fontSize: 9.5, fontWeight: 500 }}>More</span>
+            </button>
+          )}  
         </nav>
       )}
       
@@ -1688,7 +1706,7 @@ Your thoughts help us serve you better. 💛
                       </div>
                       <div>
                         <div onClick={() => a.phone && setHistoryCustomer({ name: a.client, phone: a.phone })} style={{ fontWeight: 600, fontSize: 14.5, color: C.ink, cursor: a.phone ? "pointer" : "default", textDecoration: a.phone ? "underline dotted" : "none" }}>{a.client}{visitCount > 1 && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: C.goldLight, color: "#997340", textDecoration: "none", display: "inline-block" }}>{visitCount} visits</span>}</div>
-                        <div style={{ fontSize: 12.5, color: C.sub, marginTop: 1 }}>{a.service}</div>
+                        <div style={{ fontSize: 12.5, color: C.sub, marginTop: 1 }}>{a.service}{a.employee ? <span style={{ color: C.gold, fontWeight: 500 }}> · {a.employee}</span> : null}</div>{a.phone && <div style={{ fontSize: 11.5, color: C.sub, marginTop: 1 }}>{a.phone}</div>}
                       </div>
                     </div>
                     <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", padding: "3px 9px", borderRadius: 20, backgroundColor: badge.bg, color: badge.text }}>{a.status}</span>
@@ -2092,7 +2110,9 @@ function Marketing({ user, isMobile }) {
       const file = new File([blob], `${salonName.replace(/\s+/g, "-")}-poster.jpg`, { type: "image/jpeg" });
 
       // Mobile pe native share (WhatsApp seedha option milega), warna download
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (isNative()) {
+        await nativeShareImage(file, { title: collabText, text: `Check out ${salonName}!` });
+      } else if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: collabText,
@@ -2156,7 +2176,9 @@ function Marketing({ user, isMobile }) {
     if (!uploadedFile) return;
     const shareFile = new File([uploadedFile], `${salonName.replace(/\s+/g, "-")}-poster.jpg`, { type: uploadedFile.type });
     try {
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [shareFile] })) {
+      if (isNative()) {
+        await nativeShareImage(shareFile);
+      } else if (navigator.share && navigator.canShare && navigator.canShare({ files: [shareFile] })) {
         await navigator.share({ files: [shareFile] });
       } else {
         handleDownloadUploaded();
@@ -2168,6 +2190,10 @@ function Marketing({ user, isMobile }) {
 
   const handleDownloadUploaded = () => {
     if (!uploadedFile) return;
+    if (isNative()) {
+      nativeShareImage(uploadedFile).catch((err) => { if (err?.name !== "AbortError") console.error(err); });
+      return;
+    }
     const url = URL.createObjectURL(uploadedFile);
     const a = document.createElement("a");
     a.href = url;
@@ -2414,12 +2440,14 @@ function Marketing({ user, isMobile }) {
                 Download
               </button>
             </div>
+              {!isMobile && !isNative() && (
               <button
                 onClick={handleCopyForWebWhatsApp}
                 style={{ ...btnGhost, width: "100%", justifyContent: "center", padding: "10px 0", marginTop: 10, background: C.card, color: C.plum, border: `1px solid ${C.line}`, boxShadow: "none", fontSize: 13 }}
               >
                 Share nahi ho raha? Copy karke WhatsApp Web kholo
             </button>
+            )}
           </div>
         </div>
       )}
@@ -2681,7 +2709,7 @@ function Attendance({ employees, setLoadError, isMobile }) {
             {summaryLoading && <Loader2 className="spinner" size={16} color={C.plum} />}
           </div>
 
-          <div className="vellora-card" style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div data-noswipe className="vellora-card" style={{ ...card, padding: 0, overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
               <thead>
                 <tr style={{ background: C.goldLight, textAlign: "left" }}>
@@ -3079,7 +3107,7 @@ const REPORT_PRESETS = {
 const PRESET_LABELS = [["today", "Today"], ["yesterday", "Yesterday"], ["thisMonth", "This Month"], ["lastMonth", "Last Month"], ["thisYear", "This Year"]];
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-function Reports({ setLoadError }) {
+function Reports({ setLoadError, isMobile }) {
   const [preset, setPreset] = useState("thisMonth");
   const [range, setRange] = useState(() => { const [from, to] = REPORT_PRESETS.thisMonth(); return { from, to }; });
   const [payMode, setPayMode] = useState("all"); // all | cash | online
@@ -3221,36 +3249,22 @@ function Reports({ setLoadError }) {
 
       {!loading && data && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 26 }}>
-            <div className="vellora-card" style={card}>
-              <div style={{ width: 42, height: 42, borderRadius: 12, background: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                <Wallet size={20} color="#fff" />
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(auto-fit,minmax(180px,1fr))", gap: isMobile ? 10 : 14, marginBottom: isMobile ? 18 : 26 }}>
+            {[
+              { icon: Wallet, bg: "#F59E0B", value: money(shownRevenue), label: "Revenue", sub: null },
+              { icon: Calendar, bg: "#8B5CF6", value: shownCustomers, label: `Paid customers${payLabel}`, sub: null },
+              { icon: Wallet, bg: "#D33535", value: money(data.totalBalance || 0), label: "Balance pending", sub: `${data.balanceCount || 0} clients` },
+              { icon: Banknote, bg: "#10B981", value: money(recv.total), label: "Balance received", sub: `Cash ${money(recv.cash)} · Online ${money(recv.online)}` },
+            ].map(({ icon: Icon, bg, value, label, sub }) => (
+              <div key={label} className="vellora-card" style={{ ...card, padding: isMobile ? "12px" : "24px" }}>
+                <div style={{ width: isMobile ? 30 : 42, height: isMobile ? 30 : 42, borderRadius: isMobile ? 9 : 12, background: bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: isMobile ? 8 : 16 }}>
+                  <Icon size={isMobile ? 15 : 20} color="#fff" />
+                </div>
+                <div style={{ fontSize: isMobile ? 18 : 24, fontWeight: 600, fontFamily: fontVoice, lineHeight: 1.2, wordBreak: "break-word" }}>{value}</div>
+                <div style={{ fontSize: isMobile ? 11.5 : 12.5, color: C.sub, marginTop: 3 }}>{label}</div>
+                {sub && <div style={{ fontSize: isMobile ? 10.5 : 11.5, color: C.sub, marginTop: 2 }}>{sub}</div>}
               </div>
-              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{money(shownRevenue)}</div>
-              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>{`Revenue · ${fmtPeriodLabel(selected)}`}</div>
-            </div>
-            <div className="vellora-card" style={card}>
-              <div style={{ width: 42, height: 42, borderRadius: 12, background: "#8B5CF6", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                <Calendar size={20} color="#fff" />
-              </div>
-              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{shownCustomers}</div>
-              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>{`Paid customers${payLabel} · ${fmtPeriodLabel(selected)}`}</div>
-            </div>
-            <div className="vellora-card" style={card}>
-              <div style={{ width: 42, height: 42, borderRadius: 12, background: "#D33535", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                <Wallet size={20} color="#fff" />
-              </div>
-              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{money(data.totalBalance || 0)}</div>
-              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>{`Balance pending · ${fmtPeriodLabel(selected)} (${data.balanceCount || 0} clients)`}</div>
-            </div>
-            <div className="vellora-card" style={card}>
-              <div style={{ width: 42, height: 42, borderRadius: 12, background: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                <Banknote size={20} color="#fff" />
-              </div>
-              <div style={{ fontSize: 24, fontWeight: 600, fontFamily: fontVoice }}>{money(recv.total)}</div>
-              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 4 }}>{`Balance received · ${fmtPeriodLabel(selected)}`}</div>
-              <div style={{ fontSize: 11.5, color: C.sub, marginTop: 2 }}>{`Cash ${money(recv.cash)} · Online ${money(recv.online)}`}</div>
-            </div>
+            ))}
           </div>
 
           <div className="vellora-card" style={{ ...card, marginBottom: 20 }}>
@@ -3350,6 +3364,7 @@ function Reports({ setLoadError }) {
 }
 
 function RevenueBarChart({ rows, mode = "all" }) {
+  const [selIdx, setSelIdx] = useState(null);
   if (!rows || rows.length === 0 || rows.every((r) => !Number(r.revenue))) {
     return <EmptyState icon={TrendingUp} title="No revenue in this period" description="Jab is range me appointments paid mark hongi, yahan revenue dikhega." />;
   }
@@ -3391,7 +3406,7 @@ function RevenueBarChart({ rows, mode = "all" }) {
           {stacked && <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: "#B0A6AA" }} /> Mode not recorded</span>}
         </div>
       )}
-      <div style={{ overflowX: "auto" }}>
+      <div data-noswipe style={{ overflowX: "auto" }}>
         <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", minWidth: width > 700 ? width : undefined, height: "auto" }}>
           {Array.from({ length: yTicks + 1 }).map((_, i) => {
             const value = step * i;
@@ -3417,8 +3432,9 @@ function RevenueBarChart({ rows, mode = "all" }) {
               : `${fmtPeriod(r.period)}\nRevenue: ${money(total)}\nBookings: ${r.appointments}`;
             const showLabel = idx % labelEvery === 0;
             return (
-              <g key={r.period}>
+              <g key={r.period} onClick={() => setSelIdx(selIdx === idx ? null : idx)} style={{ cursor: "pointer" }} opacity={selIdx === null || selIdx === idx ? 1 : 0.55}>
                 <title>{tip}</title>
+                <rect x={x - 6} y={padTop - 20} width={barW + 12} height={chartH + 70} fill="transparent" />
                 {stacked ? (
                   <>
                     <rect x={x} y={baseY - scale(cash)} width={barW} height={scale(cash)} fill="#10B981" />
@@ -3446,6 +3462,24 @@ function RevenueBarChart({ rows, mode = "all" }) {
           })}
         </svg>
       </div>
+        {(() => {
+          const r = selIdx !== null ? rows[selIdx] : null;
+          if (!r) return <div style={{ fontSize: 12, color: C.sub, marginTop: 8 }}>Kisi bhi bar pe tap karo, uski detail dikhegi.</div>;
+          const total = Number(r.revenue) || 0;
+          const cash = Number(r.cashRevenue) || 0;
+          const online = Number(r.onlineRevenue) || 0;
+          const unknown = Math.max(total - cash - online, 0);
+          return (
+            <div style={{ marginTop: 10, padding: "12px 14px", background: C.goldBg, border: `1px solid ${C.goldLight}`, borderRadius: 12, fontSize: 13, color: C.ink, display: "flex", flexWrap: "wrap", gap: "6px 18px" }}>
+              <b>{fmtPeriod(r.period)}</b>
+              {stacked && <span>Cash: {money(cash)}</span>}
+              {stacked && <span>Online: {money(online)}</span>}
+              {stacked && unknown > 0 && <span>Not recorded: {money(unknown)}</span>}
+              <span>Total: <b>{money(total)}</b></span>
+              <span>Bookings: {r.appointments}</span>
+            </div>
+          );
+        })()}
     </div>
   );
 }
